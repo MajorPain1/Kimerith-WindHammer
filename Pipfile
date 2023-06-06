@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+aiosqlite = "0.17.0"
+"discord.py" = "2.1.0"
+jishaku = "2.5.1"
+loguru = "0.6.0"
+uvloop = { version = "0.17.0", sys_platform = "!= 'win32'" }
+fuzzywuzzy = "*"
+python-levenshtein = "*"
+
+[dev-packages]
+black = "*"
+flake8 = "*"
+isort = "*"
+pre-commit = "*"
+
+[pipenv]
+allow_prereleases = true
+
+[requires]
+python_version = "3.10"
+
+[scripts]
+bot = "python -m bot"
+lint = "pre-commit run --all-files"
+precommit = "pre-commit install"
