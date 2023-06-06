@@ -37,9 +37,9 @@ class Mobs(commands.GroupCog, name="mob"):
         for mob in mobs:
             rows = await self.fetch_mob(mob)
             for row in rows:
-                school_idx = row[6] - 2
-                title = row[3]
-                mob_rank = row[4]
+                school_idx = row[7] - 2
+                title = row[4]
+                mob_rank = row[5]
 
                 matches_school = school == "Any" or school_idx == database._SCHOOLS_STR.index(school)
                 matches_kind =  kind == "Any" or title == kind
