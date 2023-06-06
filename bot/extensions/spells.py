@@ -209,7 +209,7 @@ class Spells(commands.GroupCog, name="spell"):
         self, 
         interaction: discord.Interaction, 
         name: str,
-        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Gardening", "Shadow", "Fishing", "Cantrips", "Castlemagic", "WhirlyBurly",]] = "Any",
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Gardening", "Shadow", "Fishing", "Cantrips", "Castlemagic", "WhirlyBurly"]] = "Any",
         kind: Optional[Literal["Any","Healing","Damage","Charm","Ward","Aura","Global","AOE","Steal","Manipulation","Enchantment","Polymorph","Curse","Jinx","Mutate","Cloak"]] = "Any",
         rank: Optional[int] = -1,
     ):
@@ -241,8 +241,8 @@ class Spells(commands.GroupCog, name="spell"):
         self, 
         interaction: discord.Interaction, 
         name: str,
-        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death"]] = "Any",
-        kind: Optional[Literal["Any","Healing","Damage","Charm","Ward","Aura","Global","AOE","Steal","Manipulation","Enchantment","Polymorph","Curse","Jinx","Mutate","Cloak","Shadow",]] = "Any",
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Gardening", "Shadow", "Fishing", "Cantrips", "Castlemagic", "WhirlyBurly"]] = "Any",
+        kind: Optional[Literal["Any","Healing","Damage","Charm","Ward","Aura","Global","AOE","Steal","Manipulation","Enchantment","Polymorph","Curse","Jinx","Mutate","Cloak"]] = "Any",
         rank: Optional[int] = -1,
     ):
         await interaction.response.defer()

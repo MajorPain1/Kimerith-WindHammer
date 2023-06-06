@@ -224,7 +224,7 @@ class Stats(commands.GroupCog, name="item"):
         self, 
         interaction: discord.Interaction, 
         name: str,
-        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death"]] = "Any",
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance"]] = "Any",
         kind: Optional[Literal["Any", "Hat", "Robe", "Shoes", "Weapon", "Athame", "Amulet", "Ring", "Deck", "Jewel", "Mount"]] = "Any",
         level: Optional[int] = -1,
     ):

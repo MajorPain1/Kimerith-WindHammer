@@ -171,8 +171,8 @@ class Mobs(commands.GroupCog, name="mob"):
         self, 
         interaction: discord.Interaction, 
         name: str,
-        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon",]] = "Any",
-        kind: Optional[Literal["Any", "Hat", "Robe", "Shoes", "Weapon", "Athame", "Amulet", "Ring", "Deck", "Jewel", "Mount"]] = "Any",
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon"]] = "Any",
+        kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
         rank: Optional[int] = -1,
     ):
         await interaction.response.defer()
@@ -203,8 +203,8 @@ class Mobs(commands.GroupCog, name="mob"):
         self, 
         interaction: discord.Interaction, 
         name: str,
-        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death"]] = "Any",
-        kind: Optional[Literal["Any", "Hat", "Robe", "Shoes", "Weapon", "Athame", "Amulet", "Ring", "Deck", "Jewel", "Mount"]] = "Any",
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon"]] = "Any",
+        kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
         rank: Optional[int] = -1,
     ):
         await interaction.response.defer()
