@@ -166,8 +166,9 @@ class Mobs(commands.GroupCog, name="mob"):
             try:
                 image_name = image_file.split(".")[0]
                 png_file = f"{image_name}.png"
-                discord_file = discord.File(f"PNG_Images\\{png_file}", filename=png_file)
-                embed.set_thumbnail(url=f"attachment://{png_file}")
+                png_name = png_file.replace(" ", "")
+                discord_file = discord.File(f"PNG_Images\\{png_file}", filename=png_name)
+                embed.set_thumbnail(url=f"attachment://{png_name}")
             except FileNotFoundError:
                 pass
 
