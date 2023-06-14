@@ -789,8 +789,7 @@ async def fetch_raw_item_stats(db, item: int) -> List[str]:
                 # Regular stat
                 case 1:
                     order, stat = translate_stat(a)
-                    rounded_value = round(unpack_stat_value(b), 2)
-                    stats.append(StatObject(order, int(rounded_value), stat))
+                    stats.append(StatObject(order, b, stat))
 
                 # Starting pips
                 case 2:

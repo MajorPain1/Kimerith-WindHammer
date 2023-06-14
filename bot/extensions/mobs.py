@@ -18,12 +18,22 @@ INNER JOIN locale_en ON locale_en.id == mobs.name
 WHERE locale_en.data == ? COLLATE NOCASE
 """
 
+FIND_OBJECT_NAME_QUERY = """
+SELECT * FROM mobs
+INNER JOIN locale_en ON locale_en.id == mobs.name
+WHERE real_name == ?
+"""
+
 class Mobs(commands.GroupCog, name="mob"):
     def __init__(self, bot: TheBot):
         self.bot = bot
 
     async def fetch_mob(self, name: str) -> List[tuple]:
         async with self.bot.db.execute(FIND_MOB_QUERY, (name,)) as cursor:
+            return await cursor.fetchall()
+    
+    async def fetch_object_name(self, name: str) -> List[tuple]:
+        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name,)) as cursor:
             return await cursor.fetchall()
 
     async def fetch_mobs_with_filter(self, mobs, school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
@@ -67,8 +77,7 @@ class Mobs(commands.GroupCog, name="mob"):
                     # Regular stat
                     case 1:
                         order, stat = database.translate_stat(a)
-                        rounded_value = round(database.unpack_stat_value(b), 2)
-                        stats.append(StatObject(order, int(rounded_value), stat))
+                        stats.append(StatObject(order, b, stat))
 
                     # Starting pips
                     case 2:
@@ -174,28 +183,36 @@ class Mobs(commands.GroupCog, name="mob"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon"]] = "Any",
         kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
         rank: Optional[int] = -1,
+        use_object_name: Optional[bool] = False,
     ):
         await interaction.response.defer()
         logger.info("Requested mob '{}'", name)
 
-        rows = await self.fetch_mobs_with_filter(name, school, kind, rank, return_row=True)
-        if not rows:
-            closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.mob_list]
-            closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
-            closest_names = list(zip(*closest_names))[0]
+        if use_object_name:
+            rows = self.fetch_object_name(name)
+            if not rows:
+                embed = discord.Embed(description=f"No mobs with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+        else:
+            rows = await self.fetch_mobs_with_filter(name, school, kind, rank, return_row=True)
+            if not rows:
+                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.mob_list]
+                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
+                closest_names = list(zip(*closest_names))[0]
 
-            for mob in closest_names:
-                rows = await self.fetch_mobs_with_filter(mob, school, kind, rank, return_row=True)
+                for mob in closest_names:
+                    rows = await self.fetch_mobs_with_filter(mob, school, kind, rank, return_row=True)
 
-                if rows:
-                    logger.info("Failed to find '{}' instead searching for {}", name, mob)
-                    break
+                    if rows:
+                        logger.info("Failed to find '{}' instead searching for {}", name, mob)
+                        break
 
-        embeds = [await self.build_mob_embed(row) for row in rows]
-        sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
-        unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
-        view = ItemView(unzipped_embeds, files=unzipped_images)
-        await view.start(interaction)
+        if rows:
+            embeds = [await self.build_mob_embed(row) for row in rows]
+            sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
+            unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
+            view = ItemView(unzipped_embeds, files=unzipped_images)
+            await view.start(interaction)
 
     @app_commands.command(name="list", description="Finds a list of mob names that contain the string")
     @app_commands.describe(name="The name of the mobs to search for")

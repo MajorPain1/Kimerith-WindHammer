@@ -17,6 +17,12 @@ LEFT JOIN locale_en ON locale_en.id == spells.name
 WHERE locale_en.data == ? COLLATE NOCASE
 """
 
+FIND_OBJECT_NAME_QUERY = """
+SELECT * FROM spells
+INNER JOIN locale_en ON locale_en.id == spells.name
+WHERE real_name == ?
+"""
+
 SPELL_DESCRIPTION_QUERY = """
 SELECT locale_en.data FROM spells
 JOIN locale_en ON spells.description = locale_en.id
@@ -32,6 +38,10 @@ class Spells(commands.GroupCog, name="spell"):
 
     async def fetch_spell(self, name: str) -> List[tuple]:
         async with self.bot.db.execute(FIND_SPELL_QUERY, (name,)) as cursor:
+            return await cursor.fetchall()
+        
+    async def fetch_object_name(self, name: str) -> List[tuple]:
+        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_spells_with_filter(self, spells: List[str], school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
@@ -82,6 +92,7 @@ class Spells(commands.GroupCog, name="spell"):
         description = re.sub("<[^>]*>", "", description)
         description = re.sub(r"\{[^{}]*\}", "", description)
         for variable in re.findall(r"\$(\w+?)(\d*)\$", description):
+
             markdown_variable = variable[0]
             index = variable[1]
             actual = variable[0] + variable[1]
@@ -93,13 +104,15 @@ class Spells(commands.GroupCog, name="spell"):
 
             match markdown_variable:
                 case "eA" | "eAPerPip" | "eAPerPipAll":
-                    if index >= len(effects):
+                    if actual == "eA1":
+                        description = description.replace(f'${actual}$', "")
+                    elif index >= len(effects):
                         description = description.replace(f'${actual}$', "")
                     else:
                         description = description.replace(f'${actual}$', f"{effects[index][0]}")
 
                 case "eABonus":
-                    description = description.replace(f'${actual}$ ', "")
+                    description = description.replace(f'${actual}$', "").lstrip()
                 
                 case "eAExtra":
                     description = description.replace(f'\\n+${actual}$', "")
@@ -212,28 +225,36 @@ class Spells(commands.GroupCog, name="spell"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Gardening", "Shadow", "Fishing", "Cantrips", "Castlemagic", "WhirlyBurly"]] = "Any",
         kind: Optional[Literal["Any","Healing","Damage","Charm","Ward","Aura","Global","AOE","Steal","Manipulation","Enchantment","Polymorph","Curse","Jinx","Mutate","Cloak"]] = "Any",
         rank: Optional[int] = -1,
+        use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
         logger.info("Requested spell '{}'", name)
 
-        rows = await self.fetch_spells_with_filter(name, school, kind, rank, return_row=True)
-        if not rows:
-            closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.spell_list]
-            closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
-            closest_names = list(zip(*closest_names))[0]
-            
-            for spell in closest_names:
-                rows = await self.fetch_spells_with_filter(spell, school, kind, rank, return_row=True)
+        if use_object_name:
+            rows = await self.fetch_object_name(name)
+            if not rows:
+                embed = discord.Embed(description=f"No spells with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+                
+        else:
+            rows = await self.fetch_spells_with_filter(name, school, kind, rank, return_row=True)
+            if not rows:
+                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.spell_list]
+                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
+                closest_names = list(zip(*closest_names))[0]
+                
+                for spell in closest_names:
+                    rows = await self.fetch_spells_with_filter(spell, school, kind, rank, return_row=True)
 
-                if rows:
-                    logger.info("Failed to find '{}' instead searching for {}", name, spell)
-                    break
-
-        embeds = [await self.build_spell_embed(row) for row in rows]
-        sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
-        unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
-        view = ItemView(unzipped_embeds, files=unzipped_images)
-        await view.start(interaction)
+                    if rows:
+                        logger.info("Failed to find '{}' instead searching for {}", name, spell)
+                        break
+        if rows:
+            embeds = [await self.build_spell_embed(row) for row in rows]
+            sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
+            unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
+            view = ItemView(unzipped_embeds, files=unzipped_images)
+            await view.start(interaction)
 
     @app_commands.command(name="list", description="Finds a list of spell names that contain the string")
     @app_commands.describe(name="The name of the spells to search for")

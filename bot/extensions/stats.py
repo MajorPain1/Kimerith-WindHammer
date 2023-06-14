@@ -18,6 +18,12 @@ INNER JOIN locale_en ON locale_en.id == items.name
 WHERE locale_en.data == ? COLLATE NOCASE
 """
 
+FIND_OBJECT_NAME_QUERY = """
+SELECT * FROM items
+INNER JOIN locale_en ON locale_en.id == items.name
+WHERE real_name == ?
+"""
+
 FIND_SET_QUERY = """
 SELECT * FROM set_bonuses
 """
@@ -41,6 +47,10 @@ class Stats(commands.GroupCog, name="item"):
 
     async def fetch_item(self, name: str) -> List[tuple]:
         async with self.bot.db.execute(FIND_ITEM_QUERY, (name,)) as cursor:
+            return await cursor.fetchall()
+        
+    async def fetch_object_name(self, name: str) -> List[tuple]:
+        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_set_bonus_name(self, set_id: int) -> Optional[tuple]:
@@ -76,7 +86,7 @@ class Stats(commands.GroupCog, name="item"):
         return filtered_items
 
 
-    async def fetch_item_stats(self, interaction: discord.Interaction, item: int) -> List[str]:
+    async def fetch_item_stats(self, item: int) -> List[str]:
         stats = []
 
         async with self.bot.db.execute(
@@ -90,8 +100,7 @@ class Stats(commands.GroupCog, name="item"):
                     # Regular stat
                     case 1:
                         order, stat = database.translate_stat(a)
-                        rounded_value = round(database.unpack_stat_value(b), 2)
-                        stats.append(StatObject(order, int(rounded_value), stat))
+                        stats.append(StatObject(order, b, stat))
 
                     # Starting pips
                     case 2:
@@ -130,7 +139,7 @@ class Stats(commands.GroupCog, name="item"):
 
         return _return_stats
 
-    async def build_item_embed(self, interaction, row) -> discord.Embed:
+    async def build_item_embed(self, row) -> discord.Embed:
         item_id = row[0]
         object_name = row[2].decode()
         set_bonus = row[3]
@@ -163,7 +172,7 @@ class Stats(commands.GroupCog, name="item"):
                 f"Max {database.translate_school(deck_school)} copies {max_school_copies}"
             )
             stats.append(f"Sideboard {max_tcs}")
-        stats.extend(await self.fetch_item_stats(interaction, item_id))
+        stats.extend(await self.fetch_item_stats(item_id))
 
         embed = (
             discord.Embed(
@@ -198,25 +207,33 @@ class Stats(commands.GroupCog, name="item"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance"]] = "Any",
         kind: Optional[Literal["Any", "Hat", "Robe", "Shoes", "Weapon", "Athame", "Amulet", "Ring", "Deck", "Jewel", "Mount"]] = "Any",
         level: Optional[int] = -1,
+        use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
         logger.info("Requested item '{}'", name)
 
-        rows = await self.fetch_items_with_filter(items=name, school=school, kind=kind, level=level, return_row=True)
-        if not rows:
-            closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.item_list]
-            closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
-            closest_names = list(zip(*closest_names))[0]
-            
-            for item in closest_names:
-                rows = await self.fetch_items_with_filter(items=item, school=school, kind=kind, level=level, return_row=True)
+        if use_object_name:
+            rows = await self.fetch_object_name(name)
+            if not rows:
+                embed = discord.Embed(description=f"No items with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+        else:
+            rows = await self.fetch_items_with_filter(items=name, school=school, kind=kind, level=level, return_row=True)
+            if not rows:
+                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.item_list]
+                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
+                closest_names = list(zip(*closest_names))[0]
+                
+                for item in closest_names:
+                    rows = await self.fetch_items_with_filter(items=item, school=school, kind=kind, level=level, return_row=True)
 
-                if rows:
-                    logger.info("Failed to find '{}' instead searching for {}", name, item)
-                    break
-
-        view = ItemView([await self.build_item_embed(interaction, row) for row in rows])
-        await view.start(interaction)
+                    if rows:
+                        logger.info("Failed to find '{}' instead searching for {}", name, item)
+                        break
+        
+        if rows:
+            view = ItemView([await self.build_item_embed(row) for row in rows])
+            await view.start(interaction)
 
     @app_commands.command(name="list", description="Finds a list of item names that contain the string")
     @app_commands.describe(name="The name of the items to search for")

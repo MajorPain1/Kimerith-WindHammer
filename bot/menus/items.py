@@ -9,7 +9,10 @@ class ItemView(ui.View):
         super().__init__(timeout=timeout)
 
         self.entries = entries
-        self.files = list(files)
+        if files:
+            self.files = list(files)
+        else:
+            self.files = []
         self.user = None
         self.current_page = 1
         self.total_entries = len(self.entries)
@@ -93,18 +96,18 @@ class ItemView(ui.View):
         self.user = interaction.user
 
         # When we only have one embed to show, we don't need to paginate.
-        if self.files:
-            if self.total_entries == 1 and self.get_current_file():
+        if self.total_entries == 1:
+            if self.get_current_file():
                 await interaction.followup.send(embed=self.entries[0], file=self.files[0])
-            elif self.get_current_file():
+
+            else:
+                await interaction.followup.send(embed=self.entries[0])
+
+        else:
+            if self.get_current_file():
                 await interaction.followup.send(embed=self.get_current_page(), view=self, file=self.get_current_file())
                 await self.wait()
-            else:
-                await interaction.followup.send(embed=self.get_current_page(), view=self)
-                await self.wait()
-        else:
-            if self.total_entries == 1:
-                await interaction.followup.send(embed=self.entries[0])
+
             else:
                 await interaction.followup.send(embed=self.get_current_page(), view=self)
                 await self.wait()
