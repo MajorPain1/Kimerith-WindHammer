@@ -23,6 +23,7 @@ if __name__ == "__main__":
         dds_file = str(file_path)
         root_name = file_path.stem  # Use the stem of the file (filename without extension)
         png_file = f"{root_name}.png"
+        png_file = png_file.replace(" ", "")
 
         print("DDS File:", dds_file)
         print("PNG File:", png_file)
