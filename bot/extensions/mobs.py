@@ -21,7 +21,7 @@ WHERE locale_en.data == ? COLLATE NOCASE
 FIND_OBJECT_NAME_QUERY = """
 SELECT * FROM mobs
 INNER JOIN locale_en ON locale_en.id == mobs.name
-WHERE real_name == ?
+WHERE mobs.real_name == ? COLLATE NOCASE
 """
 
 class Mobs(commands.GroupCog, name="mob"):
@@ -33,7 +33,8 @@ class Mobs(commands.GroupCog, name="mob"):
             return await cursor.fetchall()
     
     async def fetch_object_name(self, name: str) -> List[tuple]:
-        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name,)) as cursor:
+        name_bytes = name.encode('utf-8')
+        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
             return await cursor.fetchall()
 
     async def fetch_mobs_with_filter(self, mobs, school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
@@ -190,7 +191,7 @@ class Mobs(commands.GroupCog, name="mob"):
         logger.info("Requested mob '{}'", name)
 
         if use_object_name:
-            rows = self.fetch_object_name(name)
+            rows = await self.fetch_object_name(name)
             if not rows:
                 embed = discord.Embed(description=f"No mobs with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
                 await interaction.followup.send(embed=embed)

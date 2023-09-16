@@ -21,7 +21,7 @@ WHERE locale_en.data == ? COLLATE NOCASE
 FIND_OBJECT_NAME_QUERY = """
 SELECT * FROM items
 INNER JOIN locale_en ON locale_en.id == items.name
-WHERE real_name == ?
+WHERE items.real_name == ? COLLATE NOCASE
 """
 
 FIND_SET_QUERY = """
@@ -50,7 +50,8 @@ class Stats(commands.GroupCog, name="item"):
             return await cursor.fetchall()
         
     async def fetch_object_name(self, name: str) -> List[tuple]:
-        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name,)) as cursor:
+        name_bytes = name.encode('utf-8')
+        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_set_bonus_name(self, set_id: int) -> Optional[tuple]:
@@ -255,12 +256,12 @@ class Stats(commands.GroupCog, name="item"):
             if name.lower() in item.lower():
                 items_containing_name.append(item)
 
-        no_duplicate_items = [*set(items_containing_name)]
-        filtered_items = await self.fetch_items_with_filter(items=no_duplicate_items, school=school, kind=kind, level=level)
-        no_no_duplicate_items = [*set(filtered_items)]
-        alphabetic_items = sorted(no_no_duplicate_items)
+        if len(items_containing_name) > 0:
+            no_duplicate_items = [*set(items_containing_name)]
+            filtered_items = await self.fetch_items_with_filter(items=no_duplicate_items, school=school, kind=kind, level=level)
+            no_no_duplicate_items = [*set(filtered_items)]
+            alphabetic_items = sorted(no_no_duplicate_items)
 
-        if len(alphabetic_items) > 0:
             chunks = [alphabetic_items[i:i+15] for i in range(0, len(alphabetic_items), 15)]
             item_embeds = []
             for item_chunk in chunks:

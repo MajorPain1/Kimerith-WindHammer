@@ -20,7 +20,7 @@ WHERE locale_en.data == ? COLLATE NOCASE
 FIND_OBJECT_NAME_QUERY = """
 SELECT * FROM spells
 INNER JOIN locale_en ON locale_en.id == spells.name
-WHERE real_name == ?
+WHERE spells.real_name == ? COLLATE NOCASE
 """
 
 SPELL_DESCRIPTION_QUERY = """
@@ -41,7 +41,8 @@ class Spells(commands.GroupCog, name="spell"):
             return await cursor.fetchall()
         
     async def fetch_object_name(self, name: str) -> List[tuple]:
-        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name,)) as cursor:
+        name_bytes = name.encode('utf-8')
+        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_spells_with_filter(self, spells: List[str], school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
@@ -208,8 +209,9 @@ class Spells(commands.GroupCog, name="spell"):
             try:
                 image_name = image_file.split(".")[0]
                 png_file = f"{image_name}.png"
-                discord_file = discord.File(f"PNG_Images\\{png_file}", filename=png_file)
-                embed.set_thumbnail(url=f"attachment://{png_file}")
+                png_name = png_file.replace(" ", "")
+                discord_file = discord.File(f"PNG_Images\\{png_file}", filename=png_name)
+                embed.set_thumbnail(url=f"attachment://{png_name}")
             except FileNotFoundError:
                 pass
 

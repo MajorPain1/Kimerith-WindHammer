@@ -241,7 +241,7 @@ class StatObject:
     string: str
 
     def to_string(self) -> str:
-        if self.string.startswith(("Allows", "Invul", "Gives", "Maycasts")):
+        if self.string.startswith(("Allows", "Invul", "Gives", "Maycasts", "-")):
             return self.string
         elif self.value > 0:
             return f"+{self.value}{self.string}"
@@ -794,13 +794,13 @@ async def fetch_raw_item_stats(db, item: int) -> List[str]:
                 # Starting pips
                 case 2:
                     if a != 0:
-                        stats.append(StatObject(131, a, f" {PIP}"))
+                        stats.append(StatObject(132, a, f" {PIP}"))
                     if b != 0:
-                        stats.append(StatObject(132, b, f" {POWER_PIP}"))
+                        stats.append(StatObject(133, b, f" {POWER_PIP}"))
 
                 # Speed bonus
                 case 5:
-                    stats.append(StatObject(133, a, f"% {SPEED}"))
+                    stats.append(StatObject(134, a, f"% {SPEED}"))
 
     return stats
 

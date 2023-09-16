@@ -42,7 +42,8 @@ class ItemView(ui.View):
         # Return the formatted embed entry to display.
         file = self.files[self.current_page - 1]
         if file:
-            self.files[self.current_page - 1] = discord.File(file.fp, filename=file.filename)
+            file_name = file.filename.replace(" ")
+            self.files[self.current_page - 1] = discord.File(f"PNG_Images\\{file.filename}", filename=file.filename)
         else:
             self.files[self.current_page - 1] = None
 
