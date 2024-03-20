@@ -159,6 +159,7 @@ _MONSTROLOGY_EXTRACTS = [
     "Bird",
     "Insect",
     "Polar Bear",
+    "Alien",
 ]
 
 GARDENING_TYPES = [
@@ -200,6 +201,7 @@ class MonstrologyKind(IntFlag):
     PARROT = 1 << 14
     INSECT = 1 << 15
     POLAR_BEAR = 1 << 16
+    ALIEN = 1 << 17
 
 
 class ItemKind(IntFlag):
@@ -767,6 +769,12 @@ _TYPE_EMOJIS = {
     "Block_image": BLOCK,
     "All_Enemies_Wide": ALL_ENEMIES_SQUARE,
     "All_Friends_Wide": ALL_FRIENDS_SQUARE,
+    "All_Enemies_Select": ALL_ENEMIES_SELECT,
+    "All_Friends_Select": ALL_FRIENDS_SELECT,
+    "Chromatic_Caster_image": RANDOM,
+    "Chromatic_Target_image": RANDOM,
+    "Shield_image": WARD,
+    "Weakness_image": JINX
 }
 
 def translate_type_emoji(icon_name: str) -> PartialEmoji:

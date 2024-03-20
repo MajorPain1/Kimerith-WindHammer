@@ -112,6 +112,12 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         description = description.replace(f'${actual}$', f"{effects[index][0]}")
 
+                case "eAMul":
+                    description = description.replace(f'${actual}$', f"50")
+
+                case "eAMax":
+                    description = description.replace(f'${actual}$', f"{effects[index][2]}")
+
                 case "eABonus":
                     description = description.replace(f'${actual}$', "").lstrip()
                 
@@ -145,17 +151,19 @@ class Spells(commands.GroupCog, name="spell"):
         school = row[7]
         description = row[8]
         type_name = row[9]
+        pve = row[10]
+        pvp = row[11]
 
-        rank = row[10]
-        x_pips = row[11]
-        shadow_pips = row[12] * f"{emojis.SHADOW_PIP}"
-        fire_pips = row[13] * f"{emojis.FIRE}"
-        ice_pips = row[14] * f"{emojis.ICE}"
-        storm_pips = row[15] * f"{emojis.STORM}"
-        myth_pips = row[16] * f"{emojis.MYTH}"
-        life_pips = row[17] * f"{emojis.LIFE}"
-        death_pips = row[18] * f"{emojis.DEATH}"
-        balance_pips = row[19] * f"{emojis.BALANCE}"
+        rank = row[12]
+        x_pips = row[13]
+        shadow_pips = row[14] * f"{emojis.SHADOW_PIP}"
+        fire_pips = row[15] * f"{emojis.FIRE}"
+        ice_pips = row[16] * f"{emojis.ICE}"
+        storm_pips = row[17] * f"{emojis.STORM}"
+        myth_pips = row[18] * f"{emojis.MYTH}"
+        life_pips = row[19] * f"{emojis.LIFE}"
+        death_pips = row[20] * f"{emojis.DEATH}"
+        balance_pips = row[21] * f"{emojis.BALANCE}"
 
         if x_pips:
             rank = "X"
@@ -192,6 +200,17 @@ class Spells(commands.GroupCog, name="spell"):
             accuracy_field = f"Costs {energy} {emojis.ENERGY}"
         else:
             accuracy_field = f"{accuracy}% {emojis.ACCURACY}"
+
+
+        
+        if pve and not pvp:
+            pve_or_pvp_emoji = emojis.NO_PVP
+        elif pvp and not pve:
+            pve_or_pvp_emoji = emojis.PVP_ONLY
+        elif pvp and pve:
+            pve_or_pvp_emoji = emojis.NO_COMBAT
+        else:
+            pve_or_pvp_emoji = None
         
         embed = (
             discord.Embed(
@@ -203,6 +222,9 @@ class Spells(commands.GroupCog, name="spell"):
             .add_field(name=accuracy_field, value="")
             .add_field(name=f"Type {type_string}", value="")
         )
+
+        if pve_or_pvp_emoji != None:
+            embed.add_field(name=f"{pve_or_pvp_emoji}", value="")
 
         discord_file = None
         if image_file:
@@ -250,6 +272,9 @@ class Spells(commands.GroupCog, name="spell"):
 
                     if rows:
                         logger.info("Failed to find '{}' instead searching for {}", name, spell)
+                        break
+                    else:
+                        logger.info("Failed to find '{}'", name)
                         break
         if rows:
             embeds = [await self.build_spell_embed(row) for row in rows]
@@ -299,7 +324,7 @@ class Spells(commands.GroupCog, name="spell"):
             await view.start(interaction)
 
         else:
-            embed = discord.Embed(description=f"No spells containing {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            embed = discord.Embed(description=f"Unable to find {name}.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
 
             await interaction.followup.send(embed=embed)
 

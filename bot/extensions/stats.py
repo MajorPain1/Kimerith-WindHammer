@@ -18,10 +18,15 @@ INNER JOIN locale_en ON locale_en.id == items.name
 WHERE locale_en.data == ? COLLATE NOCASE
 """
 
-FIND_OBJECT_NAME_QUERY = """
+FIND_ITEM_OBJECT_NAME_QUERY = """
 SELECT * FROM items
 INNER JOIN locale_en ON locale_en.id == items.name
 WHERE items.real_name == ? COLLATE NOCASE
+"""
+
+FIND_ITEMCARD_OBJECT_NAME_QUERY = """
+SELECT * FROM spells
+WHERE spells.template_id == ? COLLATE NOCASE
 """
 
 FIND_SET_QUERY = """
@@ -51,7 +56,11 @@ class Stats(commands.GroupCog, name="item"):
         
     async def fetch_object_name(self, name: str) -> List[tuple]:
         name_bytes = name.encode('utf-8')
-        async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
+        async with self.bot.db.execute(FIND_ITEM_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
+            return await cursor.fetchall()
+        
+    async def fetch_itemcard_object_name(self, id: str) -> List[tuple]:
+        async with self.bot.db.execute(FIND_ITEMCARD_OBJECT_NAME_QUERY, (id,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_set_bonus_name(self, set_id: int) -> Optional[tuple]:
@@ -115,14 +124,19 @@ class Stats(commands.GroupCog, name="item"):
                         async with self.bot.db.execute(SPELL_NAME_ID_QUERY, (a,)) as cursor:
                             card_name = (await cursor.fetchone())[0]
 
+                        object_name = (await self.fetch_itemcard_object_name(a))[0][3]
+
                         copies = b
-                        stats.append(StatObject(150, 0, f"Gives {copies} {card_name}"))
+                        stats.append(StatObject(150, 0, f"Gives {copies} {card_name} ({object_name.decode()})"))
                     
                     # Maycasts
                     case 4:
                         async with self.bot.db.execute(SPELL_NAME_ID_QUERY, (a,)) as cursor:
                             card_name = (await cursor.fetchone())[0]
-                        stats.append(StatObject(151, 0, f"Maycasts {card_name}"))
+
+                        object_name = (await self.fetch_itemcard_object_name(a))[0][3]
+
+                        stats.append(StatObject(151, 0, f"Maycasts {card_name} ({object_name.decode()})"))
 
                     # Speed bonus
                     case 5:
@@ -231,6 +245,9 @@ class Stats(commands.GroupCog, name="item"):
                     if rows:
                         logger.info("Failed to find '{}' instead searching for {}", name, item)
                         break
+                    else:
+                        logger.info("Failed to find '{}'", name)
+                        break
         
         if rows:
             view = ItemView([await self.build_item_embed(row) for row in rows])
@@ -277,7 +294,7 @@ class Stats(commands.GroupCog, name="item"):
             await view.start(interaction)
 
         else:
-            txt = f"No items with given filter containing {name} found."
+            txt = f"Unable to find {name}."
 
             embed = discord.Embed(description=txt).set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
 

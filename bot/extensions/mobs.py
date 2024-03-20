@@ -182,7 +182,7 @@ class Mobs(commands.GroupCog, name="mob"):
         self, 
         interaction: discord.Interaction, 
         name: str,
-        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon"]] = "Any",
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Shadow"]] = "Any",
         kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
         rank: Optional[int] = -1,
         use_object_name: Optional[bool] = False,
@@ -208,6 +208,9 @@ class Mobs(commands.GroupCog, name="mob"):
                     if rows:
                         logger.info("Failed to find '{}' instead searching for {}", name, mob)
                         break
+                    else:
+                        logger.info("Failed to find '{}'", name)
+                        break
 
         if rows:
             embeds = [await self.build_mob_embed(row) for row in rows]
@@ -222,7 +225,7 @@ class Mobs(commands.GroupCog, name="mob"):
         self, 
         interaction: discord.Interaction, 
         name: str,
-        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon"]] = "Any",
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Shadow"]] = "Any",
         kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
         rank: Optional[int] = -1,
     ):
@@ -257,7 +260,7 @@ class Mobs(commands.GroupCog, name="mob"):
             await view.start(interaction)
 
         else:
-            embed = discord.Embed(description=f"No mobs containing {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            embed = discord.Embed(description=f"Unable to find {name}.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
 
         
