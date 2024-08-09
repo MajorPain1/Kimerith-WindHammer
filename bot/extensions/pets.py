@@ -2,9 +2,10 @@ from typing import List, Optional, Literal
 from fuzzywuzzy import process, fuzz
 from operator import attrgetter
 import re
+from random import choice
 
 import discord
-from discord import app_commands
+from discord import app_commands, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
@@ -187,7 +188,7 @@ class Pets(commands.GroupCog, name="pet"):
                 title=f"Wow {wow_factor}" + " Exclusive" * exclusive,
                 color=database.make_school_color(school),
             )
-            .set_author(name=f"{pet_name}\n({real_name})\n{egg[0][0]}", icon_url=database.translate_school(school).url)
+            .set_author(name=f"{pet_name}\n({real_name}: {pet_id})\n{egg[0][0]}", icon_url=database.translate_school(school).url)
             .add_field(name="Talents", value=talent_string, inline=True)
             .add_field(name="Derby", value=derby_string, inline=True)
             .add_field(name="Stats", value=f"{strength} Strength\n{intellect} Intellect\n{agility} Agility\n{will} Will\n{power} Power\n", inline=False)
@@ -222,7 +223,10 @@ class Pets(commands.GroupCog, name="pet"):
         use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
-        logger.info("Requested pet '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} requested pet '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} requested pet '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         if use_object_name:
             rows = await self.fetch_object_name(name)
@@ -243,9 +247,7 @@ class Pets(commands.GroupCog, name="pet"):
                     if rows:
                         logger.info("Failed to find '{}' instead searching for {}", name, pet)
                         break
-                    else:
-                        logger.info("Failed to find '{}'", name)
-                        break
+
         if rows:
             view = ItemView([await self.build_pet_embed(row) for row in rows])
             await view.start(interaction)
@@ -261,7 +263,10 @@ class Pets(commands.GroupCog, name="pet"):
         exclusive: Optional[bool] = None,
     ):
         await interaction.response.defer()
-        logger.info("Search for pets that contain '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} searched for pets that contain '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} searched for pets that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         pets_containing_name = []
         for pet in self.bot.pet_list:

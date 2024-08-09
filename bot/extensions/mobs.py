@@ -3,7 +3,7 @@ from fuzzywuzzy import process, fuzz
 from operator import itemgetter
 
 import discord
-from discord import app_commands
+from discord import app_commands, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
@@ -64,7 +64,7 @@ class Mobs(commands.GroupCog, name="mob"):
 
         return filtered_mobs
 
-    async def fetch_mob_stats(self, mob: int) -> List[str]:
+    async def fetch_mob_stats(self, mob: int) -> List[StatObject]:
         stats = []
 
         async with self.bot.db.execute(
@@ -109,20 +109,21 @@ class Mobs(commands.GroupCog, name="mob"):
 
     async def build_mob_embed(self, row) -> discord.Embed:
         mob_id = row[0]
-        real_name = row[2].decode("utf-8") 
+        real_name: str = row[2].decode("utf-8") 
         image_file = row[3].decode("utf-8")
         title = row[4]
         rank = row[5]
         hp = row[6]
         school = row[7]
         secondary_school = row[8]
-        max_shadow = row[9]
-        has_cheats = row[10]
-        intelligence = row[11]
-        selfishness = row[12]
-        aggressiveness = row[13]
-        monstro = database.MonstrologyKind(row[14])
-        mob_name = row[16]
+        stunnable = row[9]
+        max_shadow = row[10]
+        has_cheats = row[11]
+        intelligence = row[12]
+        selfishness = row[13]
+        aggressiveness = row[14]
+        monstro = database.MonstrologyKind(row[15])
+        mob_name = row[17]
 
         ai = [f"Intelligence {intelligence}", f"Selfishness {selfishness}", f"Aggressiveness {aggressiveness}"]
 
@@ -133,6 +134,8 @@ class Mobs(commands.GroupCog, name="mob"):
         stats = sorted(stats, key=lambda stat: stat.order)
         _return_stats = []
         for stat in stats:
+            if "polymorph" in real_name.lower():
+                stat.value = int(stat.value / 2)
             _return_stats.append(stat.to_string())
 
         stats = _return_stats
@@ -144,6 +147,8 @@ class Mobs(commands.GroupCog, name="mob"):
             flags.append(f"This {title} Mob Cheats!")
         if max_shadow > 0:
             stats.append(f"Max {max_shadow} {emojis.SHADOW_PIP}")
+        if not stunnable:
+            flags.append(f"Stunnable and Beguilable")
         
         extracts = database.get_monstrology_string(monstro)
 
@@ -152,7 +157,7 @@ class Mobs(commands.GroupCog, name="mob"):
                 color=database.make_school_color(school),
                 description="\n".join(stats) or "\u200b",
             )
-            .set_author(name=f"{mob_name} ({real_name})\nHP {hp}\nRank {rank} {title}", icon_url=database.translate_school(school).url)
+            .set_author(name=f"{mob_name}\n({real_name}: {mob_id})\nHP {hp}\nRank {rank} {title}", icon_url=database.translate_school(school).url)
             .add_field(name="AI", value="\n".join(ai))
         )
 
@@ -165,12 +170,12 @@ class Mobs(commands.GroupCog, name="mob"):
         discord_file = None
         if image_file:
             try:
-                image_name = image_file.split(".")[0]
+                image_name = (image_file.split("|")[-1]).split(".")[0]
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
                 discord_file = discord.File(f"PNG_Images\\{png_name}", filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
-            except FileNotFoundError:
+            except:
                 pass
 
         return embed, discord_file
@@ -188,7 +193,10 @@ class Mobs(commands.GroupCog, name="mob"):
         use_object_name: Optional[bool] = False,
     ):
         await interaction.response.defer()
-        logger.info("Requested mob '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} requested mob '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} requested mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         if use_object_name:
             rows = await self.fetch_object_name(name)
@@ -207,9 +215,6 @@ class Mobs(commands.GroupCog, name="mob"):
 
                     if rows:
                         logger.info("Failed to find '{}' instead searching for {}", name, mob)
-                        break
-                    else:
-                        logger.info("Failed to find '{}'", name)
                         break
 
         if rows:
@@ -230,7 +235,10 @@ class Mobs(commands.GroupCog, name="mob"):
         rank: Optional[int] = -1,
     ):
         await interaction.response.defer()
-        logger.info("Search for mobs that contain '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} searched for mobs that contain '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} searched for mobs that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         mobs_containing_name = []
         for mob in self.bot.mob_list:

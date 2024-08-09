@@ -4,7 +4,7 @@ from operator import attrgetter
 import re
 
 import discord
-from discord import app_commands
+from discord import app_commands, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
@@ -92,8 +92,10 @@ class Spells(commands.GroupCog, name="spell"):
         description = re.sub(r'#-?\d+:', '', description)
         description = re.sub("<[^>]*>", "", description)
         description = re.sub(r"\{[^{}]*\}", "", description)
-        for variable in re.findall(r"\$(\w+?)(\d*)\$", description):
-
+        description = re.sub(r"%%", "%", description)
+        #print(effects)
+        #print(description)
+        for variable in re.findall(r"\$([\w:]+?)(\d*)\$", description):
             markdown_variable = variable[0]
             index = variable[1]
             actual = variable[0] + variable[1]
@@ -102,6 +104,10 @@ class Spells(commands.GroupCog, name="spell"):
                 index = int(index) - 1
             else:
                 index = 0
+
+            if index > len(effects):
+                index = len(effects) - 1
+
 
             match markdown_variable:
                 case "eA" | "eAPerPip" | "eAPerPipAll":
@@ -136,6 +142,9 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         description = description.replace(f'${actual}$', f"{effects[index][1]}")
 
+                case "Gambit" | "Clear" | "Remove" | "Steal" | "Swap" | "Take" | "Echo" | "Detonate" | "or" | ":" | "/" | "if":
+                    description = description = description.replace(f'${actual}$', f"{actual}")
+
                 case _:
                     description = description.replace(f'${actual}$', f"{database.translate_type_emoji(markdown_variable)}")
 
@@ -153,17 +162,18 @@ class Spells(commands.GroupCog, name="spell"):
         type_name = row[9]
         pve = row[10]
         pvp = row[11]
+        levelreq = row[12]
 
-        rank = row[12]
-        x_pips = row[13]
-        shadow_pips = row[14] * f"{emojis.SHADOW_PIP}"
-        fire_pips = row[15] * f"{emojis.FIRE}"
-        ice_pips = row[16] * f"{emojis.ICE}"
-        storm_pips = row[17] * f"{emojis.STORM}"
-        myth_pips = row[18] * f"{emojis.MYTH}"
-        life_pips = row[19] * f"{emojis.LIFE}"
-        death_pips = row[20] * f"{emojis.DEATH}"
-        balance_pips = row[21] * f"{emojis.BALANCE}"
+        rank = row[13]
+        x_pips = row[14]
+        shadow_pips = row[15] * f"{emojis.SHADOW_PIP}"
+        fire_pips = row[16] * f"{emojis.FIRE}"
+        ice_pips = row[17] * f"{emojis.ICE}"
+        storm_pips = row[18] * f"{emojis.STORM}"
+        myth_pips = row[19] * f"{emojis.MYTH}"
+        life_pips = row[20] * f"{emojis.LIFE}"
+        death_pips = row[21] * f"{emojis.DEATH}"
+        balance_pips = row[22] * f"{emojis.BALANCE}"
 
         if x_pips:
             rank = "X"
@@ -218,10 +228,13 @@ class Spells(commands.GroupCog, name="spell"):
                 color=database.make_school_color(school),
                 description=parsed_description or "\u200b",
             )
-            .set_author(name=f"{spell_name}\n({real_name})", icon_url=database.translate_school(school).url)
+            .set_author(name=f"{spell_name}\n({real_name}: {spell_id})", icon_url=database.translate_school(school).url)
             .add_field(name=accuracy_field, value="")
             .add_field(name=f"Type {type_string}", value="")
         )
+
+        if levelreq != 0:
+            embed.add_field(name=f"{levelreq} {emojis.LEVEL_RESTRICTION}", value="")
 
         if pve_or_pvp_emoji != None:
             embed.add_field(name=f"{pve_or_pvp_emoji}", value="")
@@ -229,12 +242,12 @@ class Spells(commands.GroupCog, name="spell"):
         discord_file = None
         if image_file:
             try:
-                image_name = image_file.split(".")[0]
+                image_name = (image_file.split("|")[-1]).split(".")[0]
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
                 discord_file = discord.File(f"PNG_Images\\{png_file}", filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
-            except FileNotFoundError:
+            except:
                 pass
 
         return embed, discord_file
@@ -252,7 +265,10 @@ class Spells(commands.GroupCog, name="spell"):
         use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
-        logger.info("Requested spell '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} requested spell '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} requested spell '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         if use_object_name:
             rows = await self.fetch_object_name(name)
@@ -273,9 +289,7 @@ class Spells(commands.GroupCog, name="spell"):
                     if rows:
                         logger.info("Failed to find '{}' instead searching for {}", name, spell)
                         break
-                    else:
-                        logger.info("Failed to find '{}'", name)
-                        break
+
         if rows:
             embeds = [await self.build_spell_embed(row) for row in rows]
             sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
@@ -294,7 +308,10 @@ class Spells(commands.GroupCog, name="spell"):
         rank: Optional[int] = -1,
     ):
         await interaction.response.defer()
-        logger.info("Search for spells that contain '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} searched for spells that contain '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} searched for spells that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         spells_containing_name = []
         for spell in self.bot.spell_list:

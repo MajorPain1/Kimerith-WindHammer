@@ -1,9 +1,10 @@
 from typing import List, Optional, Literal
 from fuzzywuzzy import process, fuzz
 from operator import itemgetter
+from random import choice
 
 import discord
-from discord import app_commands
+from discord import app_commands, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
@@ -194,7 +195,7 @@ class Stats(commands.GroupCog, name="item"):
                 color=database.make_school_color(school),
                 description="\n".join(stats) or "\u200b",
             )
-            .set_author(name=f"{item_name}\n({object_name})", icon_url=database.get_item_icon_url(kind))
+            .set_author(name=f"{item_name}\n({object_name}: {item_id})", icon_url=database.get_item_icon_url(kind))
             .add_field(name="Requirements", value="\n".join(requirements))
         )
 
@@ -225,7 +226,10 @@ class Stats(commands.GroupCog, name="item"):
         use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
-        logger.info("Requested item '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} requested item '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} requested item '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         if use_object_name:
             rows = await self.fetch_object_name(name)
@@ -245,9 +249,6 @@ class Stats(commands.GroupCog, name="item"):
                     if rows:
                         logger.info("Failed to find '{}' instead searching for {}", name, item)
                         break
-                    else:
-                        logger.info("Failed to find '{}'", name)
-                        break
         
         if rows:
             view = ItemView([await self.build_item_embed(row) for row in rows])
@@ -264,7 +265,10 @@ class Stats(commands.GroupCog, name="item"):
         level: Optional[int] = -1,
     ):
         await interaction.response.defer()
-        logger.info("Search for items that contain '{}'", name)
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} searched for items that contain '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} searched for items that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         items_containing_name = []
         for item in self.bot.item_list:

@@ -425,6 +425,8 @@ _STAT_DISPLAY_TABLE = {
     _fnv_1a(b"CanonicalStormPipConversion"): f" {STORM}{PIP_CONVERSION} Rating",
     _fnv_1a(b"CanonicalShadowPipConversion"): f" {SHADOW}{PIP_CONVERSION} Rating",
     _fnv_1a(b"CanonicalMoonReduceDamage"): f" {MOON}{RESIST}",
+    _fnv_1a(b"CanonicalSunReduceDamage"): f" {SUN}{RESIST}",
+    _fnv_1a(b"CanonicalStarReduceDamage"): f" {STAR}{RESIST}",
     _fnv_1a(b"CanonicalShadowPipRating"): f" {SHADOW_PIP_STAT} Rating",
     _fnv_1a(b"CanonicalAllArchmastery"): f" {ARCHMASTERY} Rating",
 }
@@ -572,6 +574,8 @@ _STAT_ORDER_TABLE = [
     _fnv_1a(b"CanonicalStormMastery"),
     # Bottom stuff
     _fnv_1a(b"CanonicalMoonReduceDamage"),
+    _fnv_1a(b"CanonicalSunReduceDamage"),
+    _fnv_1a(b"CanonicalStarReduceDamage"),
     _fnv_1a(b"CanonicalStunResistance"),
     _fnv_1a(b"ReduceDamageInvunerable"),
     _fnv_1a(b"CanonicalAllArchmastery"),
@@ -579,8 +583,13 @@ _STAT_ORDER_TABLE = [
 ]
 
 def translate_stat(stat: int) -> Tuple[int, str, bool]:
-    display_stat = _STAT_DISPLAY_TABLE[stat]
-    order_number = _STAT_ORDER_TABLE.index(stat)
+    try:
+        display_stat = _STAT_DISPLAY_TABLE[stat]
+        order_number = _STAT_ORDER_TABLE.index(stat)
+    except KeyError:
+        display_stat = " Unknown Stat"
+        order_number = 2000000
+    
     return order_number, display_stat
 
 
@@ -771,10 +780,10 @@ _TYPE_EMOJIS = {
     "All_Friends_Wide": ALL_FRIENDS_SQUARE,
     "All_Enemies_Select": ALL_ENEMIES_SELECT,
     "All_Friends_Select": ALL_FRIENDS_SELECT,
-    "Chromatic_Caster_image": RANDOM,
-    "Chromatic_Target_image": RANDOM,
-    "Shield_image": WARD,
-    "Weakness_image": JINX
+    "Chromatic_Caster_image": CHROMATIC_CASTER,
+    "Chromatic_Target_image": CHROMATIC_TARGET,
+    "Shield_image": SHIELD,
+    "Weakness_image": WEAKNESS
 }
 
 def translate_type_emoji(icon_name: str) -> PartialEmoji:
@@ -783,7 +792,7 @@ def translate_type_emoji(icon_name: str) -> PartialEmoji:
     except KeyError:
         return _TYPE_EMOJIS["Random_image"]
 
-async def fetch_raw_item_stats(db, item: int) -> List[str]:
+async def fetch_raw_item_stats(db, item: int) -> List[StatObject]:
     stats = []
 
     async with db.execute(
@@ -812,22 +821,23 @@ async def fetch_raw_item_stats(db, item: int) -> List[str]:
 
     return stats
 
+def getStatIndexFromList(statlist: List[StatObject], statorder: int) -> int:
+    for i, stat in enumerate(statlist):
+        if stat.order == statorder:
+            return i
+
+    return -1
 
 async def sum_stats(db, existing_stats: List[StatObject], equipped_items: List[int]):
     existing_stats_dict = {stat.order: stat for stat in existing_stats}
-    processed_spell_ids = set()
 
-    for spell_id in equipped_items:
-        if spell_id in processed_spell_ids:
-            continue
-
-        processed_spell_ids.add(spell_id)
-
-        for stat in await fetch_raw_item_stats(db, spell_id):
+    for item_id in equipped_items:
+        for stat in await fetch_raw_item_stats(db, item_id):
             existing_stat = existing_stats_dict.get(stat.order)
+            
             if existing_stat is not None:
-                existing_stat.value += stat.value
+                index = getStatIndexFromList(existing_stats, existing_stat.order)
+                existing_stats[index].value = stat.value + existing_stat.value
             else:
                 existing_stats.append(stat)
                 existing_stats_dict[stat.order] = stat
-
