@@ -94,7 +94,7 @@ class Spells(commands.GroupCog, name="spell"):
         description = re.sub(r"\{[^{}]*\}", "", description)
         description = re.sub(r"%%", "%", description)
         #print(effects)
-        #print(description)
+        print(description)
         for variable in re.findall(r"\$([\w:]+?)(\d*)\$", description):
             markdown_variable = variable[0]
             index = variable[1]

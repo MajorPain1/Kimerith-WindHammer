@@ -17,6 +17,9 @@ HELP_DESCRIPTION = """
 **/mob list**: Finds a list of mobs containing a given string. Parameters: Name, School, Kind, Rank\n
 **/spell find**: Finds the spell as shown in the files. Parameters: Name, School, Kind, Rank\n
 **/spell list**: Finds a list of spells containing a given string. Parameters: Name, School, Kind, Rank\n
+**/pet find**: Finds the pet as shown in the files. Parameters: Name, School, Wow, Exclusive\n
+**/pet list**: Finds a list of pets containing a given string. Parameters: Name, School, Wow, Exclusive\n
+**/statcaps find**: Gives the stat caps for a given school and level. Parameters: Level, School\n
 """
 
 class Help(commands.Cog):

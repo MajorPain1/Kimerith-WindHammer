@@ -71,6 +71,7 @@ _SPELL_TYPES = [
     SHADOW,
     SHADOW,
     SHADOW,
+    AURA_NEGATIVE,
 ]
 
 _ITEMS = [
@@ -138,6 +139,7 @@ _SPELL_TYPES_STR = [
     "Shadow",
     "Shadow",
     "Shadow",
+    "NegativeAura"
 ]
 
 

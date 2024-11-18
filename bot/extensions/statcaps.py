@@ -95,18 +95,6 @@ class StatCaps(commands.GroupCog, name="statcaps"):
         m_resist = row[58]
         s_resist = row[59]
 
-        general = [
-            f"{max_health} {emojis.HEALTH}",
-            f"{max_mana} {emojis.MANA}",
-            f"{ppc}% {emojis.POWER_PIP} Chance",
-            f"{shad_rating} {emojis.SHADOW_PIP_STAT} Rating",
-            f"{archmastery} {emojis.ARCHMASTERY} Rating",
-            f"{outgoing}% {emojis.OUTGOING}",
-            f"{incoming}% {emojis.INCOMING}",
-            f"+{max_pips} {emojis.PIP}",
-            f"+{max_power_pips} {emojis.POWER_PIP}"
-        ]
-
         accuracy = [
             f"{b_acc}% {emojis.BALANCE} {emojis.ACCURACY}",
             f"{d_acc}% {emojis.DEATH} {emojis.ACCURACY}",
@@ -177,10 +165,20 @@ class StatCaps(commands.GroupCog, name="statcaps"):
             f"{s_resist}% {emojis.STORM} {emojis.RESIST}",
         ]
 
+        extra = [
+            f"{ppc}% {emojis.POWER_PIP} Chance",
+            f"{shad_rating} {emojis.SHADOW_PIP_STAT} Rating",
+            f"{archmastery} {emojis.ARCHMASTERY} Rating",
+            f"{outgoing}% {emojis.OUTGOING}",
+            f"{incoming}% {emojis.INCOMING}",
+            f"+{max_pips} {emojis.PIP}",
+            f"+{max_power_pips} {emojis.POWER_PIP}"
+        ]
+
         embed = (
             discord.Embed(
                 color=database.make_school_color(school),
-                description="\n".join(general) or "\u200b",
+                description=f"{max_health} {emojis.HEALTH}    {max_mana} {emojis.MANA}",
             )
             .set_author(name=f"Level {level} {_SCHOOLS_STR[school-2]}", icon_url=database.translate_school(school).url)
             .add_field(name="Damage", value="\n".join(damage))
@@ -190,6 +188,7 @@ class StatCaps(commands.GroupCog, name="statcaps"):
             .add_field(name="Block", value="\n".join(block))
             .add_field(name="Pierce", value="\n".join(pierce))
             .add_field(name="Pip Conserve", value="\n".join(pserve))
+            .add_field(name="Extra", value="\n".join(extra))
         )
 
         return embed
@@ -203,15 +202,20 @@ class StatCaps(commands.GroupCog, name="statcaps"):
     ):
         level = int(level/10)*10
         await interaction.response.defer()
+        
         if type(interaction.channel) is PartialMessageable:
             logger.info("{} requested stat caps for '{}' '{}'", interaction.user.name, level, school)
         else:
             logger.info("{} requested stat caps for '{}' '{}' in channel #{} of {}", interaction.user.name, level, school, interaction.channel.name, interaction.guild.name)
-
-        rows = await self.fetch_stat_cap(level=level, school=(_SCHOOLS_STR.index(school)+2))
-    
-        view = ItemView([await self.build_stat_cap_embed(row) for row in rows])
-        await view.start(interaction)
+        
+        if level >= 10 and level <= 170:
+            rows = await self.fetch_stat_cap(level=level, school=(_SCHOOLS_STR.index(school)+2))
+        
+            view = ItemView([await self.build_stat_cap_embed(row) for row in rows])
+            await view.start(interaction)
+        else:
+            embed = discord.Embed(description="Level Range must be between 10 to 170").set_author(name=f"Unknown Stat Cap", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
 
 
 
