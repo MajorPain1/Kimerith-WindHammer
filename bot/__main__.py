@@ -19,7 +19,6 @@ INTENTS.emojis = True
 INTENTS.guilds = True
 INTENTS.guild_messages = True
 
-activity = discord.Activity(type=discord.ActivityType.custom, name="In his tower")
 
 def main():
     logger.remove()
@@ -36,7 +35,6 @@ def main():
         ),
         max_messages=10_000,
         intents=INTENTS,
-        activity=activity,
     )
 
     bot.run()

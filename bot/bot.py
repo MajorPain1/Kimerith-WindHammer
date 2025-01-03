@@ -29,6 +29,11 @@ SELECT locale_en.data FROM pets
 INNER JOIN locale_en ON locale_en.id == pets.name
 """
 
+FIND_FISH_NAME_QUERY = """
+SELECT locale_en.data FROM fish
+INNER JOIN locale_en ON locale_en.id == fish.name
+"""
+
 class TheBot(commands.Bot):
     def __init__(self, db_path: Path, **kwargs):
         super().__init__(**kwargs)
@@ -40,6 +45,7 @@ class TheBot(commands.Bot):
         self.spell_list = []
         self.mob_list = []
         self.pet_list = []
+        self.fish_list = []
         self.uptime = datetime.now()
 
     async def on_ready(self):
@@ -80,6 +86,13 @@ class TheBot(commands.Bot):
 
         for i in tuple_pet_list:
             self.pet_list.append(i[0])
+
+        # Make our fish list
+        async with self.db.execute(FIND_FISH_NAME_QUERY) as cursor:
+            tuple_fish_list = await cursor.fetchall()
+
+        for i in tuple_fish_list:
+            self.fish_list.append(i[0])
 
         # Load required bot extensions.
         #await self.load_extension("jishaku")

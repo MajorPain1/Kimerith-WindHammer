@@ -116,9 +116,9 @@ class Stats(commands.GroupCog, name="item"):
                     # Starting pips
                     case 2:
                         if a != 0:
-                            stats.append(StatObject(132, a, f" {emojis.PIP}"))
+                            stats.append(StatObject(1320, a, f" {emojis.PIP}"))
                         if b != 0:
-                            stats.append(StatObject(133, b, f" {emojis.POWER_PIP}"))
+                            stats.append(StatObject(1330, b, f" {emojis.POWER_PIP}"))
                     
                     # Itemcards
                     case 3:
@@ -128,7 +128,7 @@ class Stats(commands.GroupCog, name="item"):
                         object_name = (await self.fetch_itemcard_object_name(a))[0][3]
 
                         copies = b
-                        stats.append(StatObject(150, 0, f"Gives {copies} {card_name} ({object_name.decode()})"))
+                        stats.append(StatObject(1500, 0, f"Gives {copies} {card_name} ({object_name.decode()})"))
                     
                     # Maycasts
                     case 4:
@@ -137,15 +137,15 @@ class Stats(commands.GroupCog, name="item"):
 
                         object_name = (await self.fetch_itemcard_object_name(a))[0][3]
 
-                        stats.append(StatObject(151, 0, f"Maycasts {card_name} ({object_name.decode()})"))
+                        stats.append(StatObject(1510, 0, f"Maycasts {card_name} ({object_name.decode()})"))
 
                     # Speed bonus
                     case 5:
-                        stats.append(StatObject(135, a, f"% {emojis.SPEED}"))
+                        stats.append(StatObject(1350, a, f"% {emojis.SPEED}"))
 
                     # Passengers
                     case 6:
-                        stats.append(StatObject(134, a, f" Passenger Mount"))
+                        stats.append(StatObject(1340, a, f" Passenger Mount"))
 
         stats = sorted(stats, key=lambda stat: stat.order)
         _return_stats = []

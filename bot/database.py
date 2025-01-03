@@ -813,13 +813,13 @@ async def fetch_raw_item_stats(db, item: int) -> List[StatObject]:
                 # Starting pips
                 case 2:
                     if a != 0:
-                        stats.append(StatObject(132, a, f" {PIP}"))
+                        stats.append(StatObject(1320, a, f" {PIP}"))
                     if b != 0:
-                        stats.append(StatObject(133, b, f" {POWER_PIP}"))
+                        stats.append(StatObject(1330, b, f" {POWER_PIP}"))
 
                 # Speed bonus
                 case 5:
-                    stats.append(StatObject(134, a, f"% {SPEED}"))
+                    stats.append(StatObject(1340, a, f"% {SPEED}"))
 
     return stats
 

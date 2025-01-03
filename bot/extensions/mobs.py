@@ -83,13 +83,13 @@ class Mobs(commands.GroupCog, name="mob"):
                     # Starting pips
                     case 2:
                         if a != 0:
-                            stats.append(StatObject(132, a, f"{emojis.PIP}"))
+                            stats.append(StatObject(1320, a, f"{emojis.PIP}"))
                         if b != 0:
-                            stats.append(StatObject(133, b, f"{emojis.POWER_PIP}"))
+                            stats.append(StatObject(1330, b, f"{emojis.POWER_PIP}"))
 
                     # Speed bonus
                     case 5:
-                        stats.append(StatObject(134, a, f"{emojis.SPEED}"))
+                        stats.append(StatObject(1340, a, f"{emojis.SPEED}"))
 
         stats = sorted(stats, key=lambda stat: stat.order)
 
