@@ -29,6 +29,11 @@ JOIN locale_en ON spells.description = locale_en.id
 WHERE spells.description = ? COLLATE NOCASE
 """
 
+FIND_OBJECT_NAME_FROM_ID = """
+SELECT * FROM spells
+WHERE spells.template_id == ?
+"""
+
 def remove_indices(lst, indices):
     return [value for index, value in enumerate(lst) if index not in indices]
 
@@ -43,6 +48,10 @@ class Spells(commands.GroupCog, name="spell"):
     async def fetch_object_name(self, name: str) -> List[tuple]:
         name_bytes = name.encode('utf-8')
         async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
+            return await cursor.fetchall()
+    
+    async def fetch_object_name_from_id(self, id: int) -> List[tuple]:
+        async with self.bot.db.execute(FIND_OBJECT_NAME_FROM_ID, (id,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_spells_with_filter(self, spells: List[str], school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
@@ -87,6 +96,695 @@ class Spells(commands.GroupCog, name="spell"):
         res = sorted(res, key=lambda effect: effect[0])
         return [(tup[1],) + (database.translate_school(tup[2]),) + (tup[3],) for tup in res]
 
+    async def fetch_real_spell_effects(self, spell: int):
+        res = []
+        async with self.bot.db.execute(
+            "SELECT * FROM spell_effects WHERE spell_id == ?", (spell,)
+        ) as cursor:
+            async for row in cursor:
+                res.append(row)
+        
+        res = sorted(res, key=lambda effect: effect[1])
+        return res
+    
+    def replace_condition_with_emojis(self, string):
+        target_full_pattern = r"(?i)\bnot Target School (Death|Fire|Ice|Life|Myth|Storm)\b" \
+            r"(?: and not Target School (?!\1)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Target School (?!.*\2\b)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Target School (?!.*\3\b)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Target School (?!.*\4\b)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Target School (?!.*\5\b)(Death|Fire|Ice|Life|Myth|Storm))*"
+        string = re.sub(target_full_pattern, f"{emojis.BALANCE}", string)
+        caster_full_pattern = r"(?i)\bnot Caster School (Death|Fire|Ice|Life|Myth|Storm)\b" \
+            r"(?: and not Caster School (?!\1)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Caster School (?!.*\2\b)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Caster School (?!.*\3\b)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Caster School (?!.*\4\b)(Death|Fire|Ice|Life|Myth|Storm))*" \
+            r"(?: and not Caster School (?!.*\5\b)(Death|Fire|Ice|Life|Myth|Storm))*"
+        string = re.sub(caster_full_pattern, f"{emojis.BALANCE}", string)
+        string = string.replace(" School Fire", f" {emojis.FIRE}").replace(" School Storm", f" {emojis.STORM}").replace(" School Ice", f" {emojis.ICE}").replace(" School Myth", f" {emojis.MYTH}").replace(" School Life", f" {emojis.LIFE}").replace(" School Death", f" {emojis.DEATH}")
+        string = string.replace(" Blade", f" {emojis.CHARM}").replace(" Shield", f" {emojis.WARD}").replace(" Weakness", f" {emojis.CURSE}").replace(" Trap", f" {emojis.JINX}").replace(" DOT", f" {emojis.DOT}").replace(" HOT", f" {emojis.HOT}").replace(" Aura", f" {emojis.AURA}").replace(" Negative Aura", f" {emojis.AURA_NEGATIVE}")
+        string = string.replace(" DamageOverTime", f" {emojis.DOT}").replace(" HealOverTime", f" {emojis.HOT}")
+        return string.replace(" Caster", "").replace(" Target", "").replace(" on", "").replace(" has", "")
+
+    def replace_consecutive_duplicates(self, input_string):
+        # Split the input into lines
+        lines = input_string.splitlines()
+        result = []
+        i = 0
+
+        while i < len(lines):
+            current_line = lines[i]
+            count = 1
+
+            # Check for consecutive duplicates
+            while i + 1 < len(lines) and lines[i + 1] == current_line:
+                count += 1
+                i += 1
+
+            # Add the line with the count if there are duplicates
+            if count > 1 and current_line.strip() != "":
+                result.append(f"{current_line} x{count}")
+            else:
+                result.append(current_line)
+            
+            # Move to the next line
+            i += 1
+
+        # Join the processed lines back into a string
+        return "\n".join(result)
+
+    def remove_index_from_string(self, text, index):
+        return text[:index] + "@" + text[index+1:]
+    
+    def condense_conditionals(self, text): # CHROMATIC CONDENSER!
+        sections = text.split("\n\n")
+        if len(sections) <= 17:
+            return text
+        
+        conditionals = {}
+        
+        for section in sections:
+            pass
+        
+        print(conditionals)
+        result = [(key, conditionals[key]) for key in conditionals]
+        print(result)
+        reconstruct = []
+        
+        for section in result:
+            reconstruct.append(section[1].replace("@", section[0]))
+        
+        return "\n\n".join(reconstruct)
+    
+    async def recursive_generate_effect_string(self, spell_effects, effect_string, nested_level=0, parent_is_x_pip=False, parent_id=-1):
+        for effect in spell_effects:
+            if effect[2] != parent_id:
+                continue
+            
+            effect_id = effect[0]
+            spell_id = effect[1]
+            effect_class = effect[4]
+            param = effect[5]
+            disposition = effect[6]
+            target = effect[7]
+            effect_type = effect[8]
+            heal_modifier = effect[9]
+            rounds = effect[10]
+            pip_num = effect[11]
+            protected = bool(effect[12])
+            rank = effect[13]
+            school = database.translate_school(effect[14])
+            condition = effect[15]
+            
+            new_line = ""
+            
+            if parent_is_x_pip:
+                new_line += f"{rank} {emojis.PIP}: "
+            match effect_class:
+                case 0:
+                    match effect_type:
+                        case "kAbsorbDamage":
+                            if protected:
+                                new_line += f"{param} {school}{emojis.PABSORB}"
+                            else:
+                                new_line += f"{param} {school}{emojis.ABSORB}"
+                                
+                        case "kAbsorbHeal":
+                            if protected:
+                                new_line += f"{param} {emojis.HEART}{emojis.PABSORB}"
+                            else:
+                                new_line += f"{param} {emojis.HEART}{emojis.ABSORB}"
+                                
+                        case "kAddCombatTriggerList":
+                            new_line += f"Add to Combat Trigger List"
+                        case "kAddSpellToDeck":
+                            object_name = await self.fetch_object_name_from_id(param)
+                            new_line += f"Add {object_name[0][3]} To Deck"
+                        case "kAddSpellToHand":
+                            object_name = await self.fetch_object_name_from_id(param)
+                            new_line += f"Add {object_name[0][3]} To Hand"
+                        case "kAutoPass":
+                            new_line += f"Auto Pass"
+                        case "kBacklashDamage":
+                            new_line += f"{school} Backlash"
+                        case "kCloakedCharm":
+                            if protected:
+                                new_line += f"{param}% {emojis.CLOAK}{school}{emojis.PCHARM}"
+                            else:
+                                new_line += f"{param}% {emojis.CLOAK}{school}{emojis.CHARM}"
+                            
+                        case "kCloakedWard":
+                            if protected:
+                                new_line += f"{param}% {emojis.CLOAK}{school}{emojis.PWARD}"
+                            else:
+                                new_line += f"{param}% {emojis.CLOAK}{school}{emojis.WARD}"
+                            
+                        case "kCloakedWardNoRemove":
+                            if protected:
+                                new_line += f"{param}% {emojis.CLOAK}{school}{emojis.PWARD} No Remove"
+                            else:
+                                new_line += f"{param}% {emojis.CLOAK}{school}{emojis.WARD} No Remove"
+                            
+                        case "kClue":
+                            new_line += f"Spy {param}{emojis.ROUNDS}"
+                        case "kCollectEssence":
+                            new_line += f"Extract"
+                        case "kConfusion":
+                            new_line += f"{param}% Confuse"
+                        case "kCritBlock":
+                            new_line += f"{param}% {school}{emojis.BLOCK}"
+                        case "kCritBoost" | "kCritBoostSchoolSpecific":
+                            new_line += f"{param}% {school}{emojis.CRIT}"
+                        case "kDamage":
+                            new_line += f"{param} {school}{emojis.DAMAGE}"
+                        case "kDamageNoCrit":
+                            new_line += f"{param} {school}{emojis.DAMAGE} No Crit"
+                        case "kDamageOverTime":
+                            if protected:
+                                new_line += f"{param} {school}{emojis.PDOT}"
+                            else:
+                                new_line += f"{param} {school}{emojis.DOT}"
+                                
+                        case "kDamagePerTotalPipPower":
+                            new_line += f"{rounds} {school}{emojis.DAMAGE} per {emojis.ALL_ENEMIES}{emojis.PIP}"
+                        case "kDampen":
+                            new_line += f"Max {param} {emojis.PIP}"
+                        case "kDeferredDamage":
+                            if protected:
+                                new_line += f"{param} {school}{emojis.PBOMB}"
+                            else:
+                                new_line += f"{param} {school}{emojis.BOMB}"
+                                
+                        case "kDetonateOverTime":
+                            match disposition:
+                                case 0:
+                                    new_line += f"Detonate {int(heal_modifier*100)}% {param} {emojis.DOT}/{emojis.HOT}"
+                                case 1:
+                                    new_line += f"Activate {int(heal_modifier*100)}% {param} {emojis.HOT}"
+                                case 2:
+                                    new_line += f"Detonate {int(heal_modifier*100)}% {param} {emojis.DOT}"
+                        
+                        case "kDispel":
+                            new_line += f"{emojis.DISPEL}{school}"
+                        case "kDispelBlock":
+                            new_line += f"{emojis.DISPEL} Block"
+                        case "kDivideDamage":
+                            new_line += f"Divide {param} {school}{emojis.DAMAGE}"
+                        case "kExitCombat":
+                            new_line += f"Exit Combat"
+                        case "kForceTargetable":
+                            new_line += f"Force Targetable"
+                        case "kHeal" | "kHealByWard" | "kSetHealPercent":
+                            new_line += f"{param} {school}{emojis.HEART}"
+                        case "kHealOverTime":
+                            new_line += f"{param} {school}{emojis.HOT}"
+                        case "kHealPercent" | "kMaxHealthHeal":
+                            new_line += f"{param}% {school}{emojis.HEART}"
+                        case "kInstantKill":
+                            new_line += f"{param} {school} Instant Kill"
+                        case "kInvalidSpellEffect":
+                            new_line += f"Invalid Spell Effect"
+                        case "kKillCreature":
+                            new_line += f"Kill {param}"
+                        case "kMakeTargetable":
+                            new_line += f"Make Targetable"
+                        case "kMaxHealthDamage":
+                            new_line += f"{param}% Max HP {school}{emojis.DAMAGE}"
+                        case "kMaximumIncomingDamage":
+                            new_line += f"{param} Equalize"
+                        case "kMindControl":
+                            new_line += f"Beguile {param}{emojis.ROUNDS}"
+                        case "kModifyAccuracy" | "kModifyCardAccuracy":
+                            new_line += f"{param}% {school}{emojis.ACCURACY}"
+                        case "kModifyCardArmorPiercing" | "kModifyCardOutgoingArmorPiercing":
+                            new_line += f"+{param}% {school}{emojis.PIERCE}"
+                        case "kModifyCardCloak":
+                            new_line += f"{emojis.CLOAK}"
+                        case "kModifyCardDamage":
+                            new_line += f"+{param} {emojis.DAMAGE}"
+                        case "kModifyCardDamagebyRank":
+                            new_line += f"+{param} per {emojis.PIP} (MAX: {rounds})"
+                        case "kModifyCardHeal":
+                            new_line += f"+{param} {emojis.HEART}"
+                        case "kModifyCardIncomingDamage":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"{param}% {emojis.WARD}"
+                                case 2:
+                                    new_line += f"+{param}% {emojis.TRAP}"
+                        
+                        case "kModifyCardMutation":
+                            object_name = await self.fetch_object_name_from_id(param)
+                            new_line += f"Mutate to {object_name}"
+                        case "kModifyCardRank":
+                            new_line += f"Modify Rank by {param} {emojis.PIP}"
+                        case "kModifyHate":
+                            if param > 0:
+                                new_line += f"+{param} Hate"
+                            elif param < 0:
+                                new_line += f"{param} Hate"
+                            else:
+                                new_line += f"Devour"
+                        
+                        case "kModifyIncomingArmorPiercing":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.TRAP}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.PIERCE}{emojis.WARD}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.AURA_NEGATIVE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.PIERCE}{emojis.AURA}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.PIERCE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.PIERCE}"
+                        
+                        case "kModifyIncomingDamage":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.TRAP}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.SHIELD}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.AURA_NEGATIVE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.AURA}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.DAMAGE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.DAMAGE}"
+                        
+                        case "kModifyIncomingDamageFlat":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.TRAP}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.SHIELD}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.AURA_NEGATIVE}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.AURA}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.FLAT_DAMAGE}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.FLAT_DAMAGE}"
+                        
+                        case "kModifyIncomingDamageOverTime":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.DOT}{emojis.JINX}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.DOT}{emojis.WARD}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.DOT}{emojis.AURA_NEGATIVE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.DOT}{emojis.AURA}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.DOT}{emojis.DAMAGE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.DOT}{emojis.DAMAGE}"
+                        
+                        case "kModifyIncomingDamageType":
+                            new_line += f"Convert {school} to {database.school_prism_values[param]} {emojis.JINX}"
+                        case "kModifyIncomingHeal":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HEART}{emojis.JINX}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HEART}{emojis.JINX}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HEART}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HEART}{emojis.AURA_NEGATIVE}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HEART}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HEART}"
+                        
+                        case "kModifyIncomingHealFlat":
+                            if rounds == 0:
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.HEART}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.HEART}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.HEART}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.HEART}{emojis.AURA_NEGATIVE}"
+                        
+                        case "kModifyIncomingHealOverTime":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HOT}{emojis.JINX}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HOT}{emojis.JINX}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HOT}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HOT}{emojis.AURA_NEGATIVE}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HOT}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HOT}"
+                        
+                        case "kModifyOutgoingArmorPiercing":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.CHARM}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.PIERCE}{emojis.CURSE}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.PIERCE}{emojis.AURA_NEGATIVE}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.PIERCE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.PIERCE}"
+                        
+                        case "kModifyOutgoingDamage":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.BLADE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.WEAKNESS}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.DAMAGE}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.DAMAGE}{emojis.AURA_NEGATIVE}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.DAMAGE}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.DAMAGE}"
+                        
+                        case "kModifyOutgoingDamageFlat":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.BLADE}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.WEAKNESS}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.DAMAGE}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.DAMAGE}{emojis.AURA_NEGATIVE}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.FLAT_DAMAGE}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.FLAT_DAMAGE}"
+                        
+                        case "kModifyOutgoingDamageType":
+                            new_line += f"Convert {school} to {database.school_prism_values[param]} {emojis.CHARM}"
+                        case "kModifyOutgoingHeal":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HEART}{emojis.CHARM}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HEART}{emojis.CURSE}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HEART}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HEART}{emojis.AURA_NEGATIVE}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param}% {school}{emojis.HEART}"
+                                else:
+                                    new_line += f"{param}% {school}{emojis.HEART}"
+                                    
+                        case "kModifyOutgoingHealFlat":
+                            if rounds == 0 and target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.HEART}{emojis.CHARM}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.HEART}{emojis.CURSE}"
+                            elif target != "kGlobal":
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.HEART}{emojis.AURA}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.HEART}{emojis.AURA_NEGATIVE}"
+                            else:
+                                if param >= 0:
+                                    new_line += f"+{param} {school}{emojis.HEART}"
+                                else:
+                                    new_line += f"{param} {school}{emojis.HEART}"
+                        
+                        case "kModifyOverTimeDuration":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"Add {emojis.HOT}"
+                                case 2:
+                                    new_line += f"Add {emojis.DOT}"
+                        
+                        case "kModifyPipRoundRate":
+                            if param >= 0:
+                                new_line += f"+{param} {emojis.PIP} Gain Per Round"
+                            else:
+                                new_line += f"{param} {emojis.PIP} Gain Per Round"
+                        
+                        case "kModifyPips":
+                            if param >= 0:
+                                new_line += f"+{param} {emojis.PIP}"
+                            else:
+                                new_line += f"{param} {emojis.PIP}"
+                        
+                        case "kModifyPowerPipChance":
+                            if param >= 0:
+                                new_line += f"+{param}% {emojis.POWER_PIP} Chance"
+                            else:
+                                new_line += f"{param}% {emojis.POWER_PIP} Chance"
+                        
+                        case "kModifyPowerPips":
+                            if param >= 0:
+                                new_line += f"+{param} {emojis.POWER_PIP}"
+                            else:
+                                new_line += f"{param} {emojis.POWER_PIP}"
+                        
+                        case "kModifyRank":
+                            if param >= 0:
+                                new_line += f"+{param} {school} Rank"
+                            else:
+                                new_line += f"{param} {school} Rank"
+                        
+                        case "kModifySchoolPips":
+                            if param >= 0:
+                                new_line += f"+{param} {school}{emojis.POWER_PIP}"
+                            else:
+                                new_line += f"{param} {school}{emojis.POWER_PIP}"
+                        
+                        case "kModifyShadowCreatureLevel":
+                            if param >= 0:
+                                new_line += f"+{param} Shadow Creature Level"
+                            else:
+                                new_line += f"{param} Shadow Creature Level"
+                        
+                        case "kModifyShadowPips":
+                            if param >= 0:
+                                new_line += f"+{param} {emojis.SHADOW_PIP}"
+                            else:
+                                new_line += f"{param} {emojis.SHADOW_PIP}"
+                        
+                        case "kPacify":
+                            new_line += f"Pacify"
+                        case "kPipConversion":
+                            if param >= 0:
+                                new_line += f"+{param} {emojis.PIP} from Incoming Rank {pip_num} Spells"
+                            else:
+                                new_line += f"{param} {emojis.PIP} from Incoming Rank {pip_num} Spells"
+                        case "kPolymorph":
+                            new_line += f"Polymorph into {param}"
+                        case "kPowerPipConversion":
+                            if param >= 0:
+                                new_line += f"+{param} {emojis.POWER_PIP} from Incoming Rank {pip_num} Spells"
+                            else:
+                                new_line += f"{param} {emojis.POWER_PIP} from Incoming Rank {pip_num} Spells"
+                        case "kProtectCardBeneficial":
+                            new_line += f"Protect {emojis.CHARM}"
+                        case "kProtectCardHarmful":
+                            new_line += f"Protect {emojis.JINX}"
+                        case "kPushCharm":
+                            new_line += f"Push {param} {emojis.CURSE}"
+                        case "kPushOverTime":
+                            new_line += f"Push {param} {emojis.DOT}"
+                        case "kPushWard":
+                            new_line += f"Push {param} {emojis.JINX}"
+                        case "kReduceOverTime":
+                            new_line += f"{param} {emojis.DOT}{emojis.ROUNDS}"
+                        case "kRemoveAura":
+                            new_line += f"Remove {emojis.AURA}"
+                        case "kRemoveCharm":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"Remove {param} {emojis.CHARM}"
+                                case 2:
+                                    new_line += f"Remove {param} {emojis.CURSE}"
+                        case "kRemoveCombatTriggerList":
+                            new_line += "Remove Combat Trigger List"
+                        case "kRemoveOverTime":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"Remove {param} {emojis.HOT}"
+                                case 2:
+                                    new_line += f"Remove {param} {emojis.DOT}"
+                        case "kRemoveStunBlock":
+                            new_line += f"Remove {emojis.STUN_BLOCK}"
+                        case "kRemoveWard":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"Remove {param} {emojis.WARD}"
+                                case 2:
+                                    new_line += f"Remove {param} {emojis.JINX}"
+                        case "kReshuffle":
+                            new_line += "Reshuffle"
+                        case "kResumePips":
+                            new_line += "Resume Pips"
+                        case "kSelectShadowCreatureAttackTarget":
+                            new_line += "Select Shadow Creature Attack Target"
+                        case "kShadowDecrementTurn":
+                            new_line += "Shadow Decrement Turn"
+                        case "kSpawnCreature" | "kSummonCreature":
+                            new_line += f"Summon {param}"
+                        case "kStealCharm":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"Steal {param} {emojis.CHARM}"
+                                case 2:
+                                    new_line += f"Push {param} {emojis.CURSE}"
+                        case "kStealHealth":
+                            new_line += f"{param} {school}{emojis.STEAL} ({heal_modifier*100}%)"
+                        case "kStealOverTime":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"Steal {param} {emojis.HOT}"
+                                case 2:
+                                    new_line += f"Push {param} {emojis.DOT}"
+                        case "kStealWard":
+                            match disposition:
+                                case 0 | 1:
+                                    new_line += f"Steal {param} {emojis.WARD}"
+                                case 2:
+                                    new_line += f"Push {param} {emojis.JINX}"
+                        case "kStopAutoPass":
+                            new_line += "Stop Auto Pass"
+                        case "kStopVanish":
+                            new_line += "Stop Vanish"
+                        case "kStun":
+                            new_line += f"{emojis.STUN} {param}{emojis.ROUNDS}"
+                        case "kStunBlock":
+                            new_line += f"{param} {emojis.STUN_BLOCK}"
+                        case "kSuspendPips":
+                            new_line += "Suspend Pips"
+                        case "kSwapAll":
+                            new_line += "Swap All"
+                        case "kSwapCharm":
+                            match disposition:
+                                case 0:
+                                    new_line += f"Swap {emojis.CHARM}/{emojis.CURSE}"
+                                case 1:
+                                    new_line += f"Swap {emojis.CHARM}"
+                                case 2:
+                                    new_line += f"Swap {emojis.CURSE}"
+                        case "kSwapOverTime":
+                            match disposition:
+                                case 0:
+                                    new_line += f"Swap {emojis.DOT}/{emojis.HOT}"
+                                case 1:
+                                    new_line += f"Swap {emojis.HOT}"
+                                case 2:
+                                    new_line += f"Swap {emojis.DOT}"
+                        case "kSwapWard":
+                            match disposition:
+                                case 0:
+                                    new_line += f"Swap {emojis.WARD}/{emojis.JINX}"
+                                case 1:
+                                    new_line += f"Swap {emojis.WARD}"
+                                case 2:
+                                    new_line += f"Swap {emojis.JINX}"
+                        case "kTaunt":
+                            new_line += f"Taunt"
+                        case "kUnPolymorph":
+                            new_line += f"Unpolymorph"
+                        case "kUntargetable":
+                            new_line += f"Untargetable"
+                        case "kVanish":
+                            new_line += f"Vanish"
+
+                    if rounds > 0 and not effect_type in ["kDamage", "kClue", "kDamagePerTotalPipPower", "kDetonateOverTime", "kHealByWard", "kMindControl", "kModifyCardDamagebyRank", "kStun"]:
+                        new_line += f" {rounds}{emojis.ROUNDS}"
+                    
+                    match target:
+                        case "kEnemyTeamAllAtOnce" | "kEnemyTeam":
+                            new_line += f" {emojis.ALL_ENEMIES_SQUARE}"
+                        case "kSpell" | "kSpecificSpells":
+                            new_line += f" {emojis.ENCHANTMENT}"
+                        case "kSelf":
+                            new_line += f" {emojis.SELF}"
+                        case "kEnemySingle":
+                            new_line += f" {emojis.ALL_ENEMIES}"
+                        case "kFriendlyTeam" | "kFriendlyTeamAllAtOnce":
+                            new_line += f" {emojis.ALL_FRIENDS_SQUARE}"
+                        case "kFriendlySingle":
+                            new_line += f" {emojis.ALL_FRIENDS}"
+                        case "kGlobal":
+                            new_line += f" {emojis.GLOBAL}"
+                        case "kMinion":
+                            new_line += f" {emojis.MINION}"
+                        case "kMultiTargetEnemy":
+                            new_line += f" {emojis.ALL_ENEMIES_SELECT}"
+                        case "kMultiTargetFriendly":
+                            new_line += f" {emojis.ALL_FRIENDS_SELECT}"
+                    
+                    if effect_type != "kInvalidSpellEffect":
+                        effect_string.append(f"{new_line}\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=False, parent_id=effect_id)
+                
+                case 1:
+                    effect_string.append("\n" + f"Random:\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=False, parent_id=effect_id)
+                    effect_string.append("\n")
+                
+                case 2:
+                    effect_string.append("\n" + f"Variable:\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=True, parent_id=effect_id)
+                    effect_string.append("\n")
+                
+                case 3:
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level, parent_is_x_pip=False, parent_id=effect_id)
+                
+                case 4:
+                    effect_string.append("\n" + f"{self.replace_condition_with_emojis(condition)}:\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=False, parent_id=effect_id)
+                    effect_string.append("\n")
+                
+                case 5:
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level, parent_is_x_pip=False, parent_id=effect_id)
+
+
+    async def generate_spell_effects_description(self, spell_effects):
+        ret_list = []
+        await self.recursive_generate_effect_string(spell_effects, ret_list)
+        return "".join(ret_list)
 
     def parse_description(self, description, effects: List[tuple]) -> str:
         description = re.sub(r'#-?\d+:', '', description)
@@ -151,7 +849,7 @@ class Spells(commands.GroupCog, name="spell"):
 
         return description.replace("\\n", "\n").replace("\\r", "\r")
         
-    async def build_spell_embed(self, row):
+    async def build_spell_embed(self, row, show_spell_effects=False):
         spell_id = row[1]
         real_name = row[3].decode("utf-8")
         image_file = row[4]
@@ -181,21 +879,30 @@ class Spells(commands.GroupCog, name="spell"):
         add_plus_sign = "+ " * any([shadow_pips, fire_pips, ice_pips, storm_pips, myth_pips, life_pips, death_pips, balance_pips])
         pip_count = f"Rank {rank} {add_plus_sign}{shadow_pips}{fire_pips}{ice_pips}{storm_pips}{myth_pips}{life_pips}{death_pips}{balance_pips}"
 
-        effects = await self.fetch_spell_effects(spell_id)
 
-        if not effects:
-            effects.append((0, 0, 0))
 
         spell_name = row[-1]
 
-        raw_description = await self.fetch_description(description)
-        if raw_description:
-            while type(raw_description) != str:
-                raw_description = raw_description[0]
-
-            parsed_description = self.parse_description(raw_description, effects)
+        parsed_description = ""
+        if show_spell_effects:
+            spell_effects = await self.fetch_real_spell_effects(spell_id)
+            parsed_description = self.replace_consecutive_duplicates(await self.generate_spell_effects_description(spell_effects))
+            #self.condense_conditionals(parsed_description)
+            print(len(parsed_description))
         else:
-            parsed_description = "Description Not Found"
+            effects = await self.fetch_spell_effects(spell_id)
+
+            if not effects:
+                effects.append((0, 0, 0))
+                
+            raw_description = await self.fetch_description(description)
+            if raw_description:
+                while type(raw_description) != str:
+                    raw_description = raw_description[0]
+
+                parsed_description = self.parse_description(raw_description, effects)
+            else:
+                parsed_description = "Description Not Found"
 
         if school == 12:
             type_string = database.GARDENING_TYPES[type_name]
@@ -262,7 +969,8 @@ class Spells(commands.GroupCog, name="spell"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Gardening", "Shadow", "Fishing", "Cantrips", "Castlemagic", "WhirlyBurly"]] = "Any",
         kind: Optional[Literal["Any","Healing","Damage","Charm","Ward","Aura","Global","AOE","Steal","Manipulation","Enchantment","Polymorph","Curse","Jinx","Mutate","Cloak"]] = "Any",
         rank: Optional[int] = -1,
-        use_object_name: Optional[bool] = False
+        use_object_name: Optional[bool] = False,
+        show_spell_effects: Optional[bool] = False
     ):
         await interaction.response.defer()
         if type(interaction.channel) is PartialMessageable:
@@ -291,7 +999,7 @@ class Spells(commands.GroupCog, name="spell"):
                         break
 
         if rows:
-            embeds = [await self.build_spell_embed(row) for row in rows]
+            embeds = [await self.build_spell_embed(row, show_spell_effects=show_spell_effects) for row in rows]
             sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)

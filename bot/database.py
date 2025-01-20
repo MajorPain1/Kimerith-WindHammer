@@ -30,6 +30,19 @@ _SCHOOL_COLORS = [
 
 _PET_LEVELS = ["Baby", "Teen", "Adult", "Ancient", "Epic", "Mega", "Ultra"]
 
+school_prism_values = {
+    72777: ICE,
+    78483: SUN,
+    2330892: LIFE,
+    2343174: FIRE,
+    2625203: STAR,
+    2448141: MYTH,
+    2504141: MOON,
+    78318724: DEATH,
+    83375795: STORM,
+    1027491821: BALANCE
+}
+
 _SCHOOLS = [
     UNIVERSAL,
     UNIVERSAL,
