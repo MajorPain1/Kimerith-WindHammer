@@ -40,7 +40,8 @@ school_prism_values = {
     2504141: MOON,
     78318724: DEATH,
     83375795: STORM,
-    1027491821: BALANCE
+    1027491821: BALANCE,
+    1429009101: SHADOW
 }
 
 _SCHOOLS = [
@@ -856,3 +857,40 @@ async def sum_stats(db, existing_stats: List[StatObject], equipped_items: List[i
             else:
                 existing_stats.append(stat)
                 existing_stats_dict[stat.order] = stat
+
+def translate_buffs(buffs: str):
+    buff_list = buffs.replace("%", "").split(" ")
+    buffs_as_modifier = []
+    for buff in buff_list:
+        try:
+            buff_int = int(buff)
+            buffs_as_modifier.append((float(buff_int) / 100) + 1)
+        except ValueError:
+            pass
+    
+    return buffs_as_modifier
+
+def crit_multiplier(crit, block, pvp=True):
+    if pvp:
+        return 2 - ((5*block) / (crit + (5*block)))
+    return 2 - ((3*block) / (crit + (3*block)))
+
+def calc_damage(base, damage: int, pierce: int, critical: int, buffs: List[float], mob_block: int, pvp: bool):
+    ret = int(base * ((float(damage) / 100) + 1))
+    
+    if buffs:
+        for buff in buffs:
+            if buff < 1 and pierce > 0:
+                pierce_reduce = int((1 - buff) * 100)
+                if pierce >= pierce_reduce:
+                    pierce -= pierce_reduce
+                    
+                else:
+                    pierce_reduce -= pierce
+                    pierce = 0
+                    new_buff = float(100 - pierce_reduce) / 100
+                    ret = int(ret * new_buff)
+            else:
+                ret = int(ret * buff)
+    
+    return ret, int(ret * crit_multiplier(critical, mob_block, pvp))

@@ -180,6 +180,59 @@ class Mobs(commands.GroupCog, name="mob"):
 
         return embed, discord_file
     
+    async def build_calc_embed(self, row, school, base, damage, pierce, critical, buffs, pvp):
+        mob_id = row[0]
+        real_name: str = row[2].decode("utf-8") 
+        image_file = row[3].decode("utf-8")
+        hp = row[6]
+        mob_school = row[7]
+        mob_name = row[17]
+        
+        school_int = database._SCHOOLS_STR.index(school) + 2
+        school_emoji = database.translate_school(school_int)
+        
+        buffs_as_modifiers = database.translate_buffs(buffs)
+        
+        stats = await self.fetch_mob_stats(mob_id)
+        items = await self.fetch_mob_items(mob_id)
+        await database.sum_stats(self.bot.db, stats, items)
+        
+        mob_buffs = []
+        mob_block = 0
+        for stat in stats:
+            if stat.string == f" {school_emoji}{database.RESIST}" or stat.string == f" {database.RESIST}":
+                mob_buffs.append(stat.value)
+                
+            elif stat.string == f" {school_emoji}{database.BLOCK} Rating" or stat.string == f" {database.BLOCK} Rating":
+                mob_block += stat.value
+        
+        mob_buff = sum(mob_buffs)
+        buffs_as_modifiers.append(1 - (mob_buff / 100))
+        no_crit, crit = database.calc_damage(base, damage, pierce, critical, buffs_as_modifiers, mob_block, pvp)
+        
+        embed = (
+            discord.Embed(
+                color=database.make_school_color(mob_school),
+                description=f"{base}{database.DAMAGE} Base\n\nStats:\n{damage}% {school_emoji}{database.DAMAGE}\n{pierce}% {school_emoji}{database.PIERCE}\n{critical} {school_emoji}{database.CRIT}\n{mob_buff}% {school_emoji}{database.RESIST}\n{mob_block} {school_emoji}{database.BLOCK}\n\nBuffs: {buffs}"
+            )
+            .set_author(name=f"Damage Calc on {mob_name}\n({real_name}: {mob_id})\nHP {hp}", icon_url=database.translate_school(mob_school).url)
+            .add_field(name="No Crit Damage", value=f"{no_crit:,}{database.DAMAGE}")
+            .add_field(name="Crit Damage", value=f"{crit:,}{database.DAMAGE}")
+        )
+        
+        discord_file = None
+        if image_file:
+            try:
+                image_name = (image_file.split("|")[-1]).split(".")[0]
+                png_file = f"{image_name}.png"
+                png_name = png_file.replace(" ", "")
+                discord_file = discord.File(f"PNG_Images\\{png_name}", filename=png_name)
+                embed.set_thumbnail(url=f"attachment://{png_name}")
+            except:
+                pass
+
+        return embed, discord_file
+
 
     @app_commands.command(name="find", description="Finds a Wizard101 mob by name")
     @app_commands.describe(name="The name of the mob to search for")
@@ -194,9 +247,9 @@ class Mobs(commands.GroupCog, name="mob"):
     ):
         await interaction.response.defer()
         if type(interaction.channel) is PartialMessageable:
-            logger.info("{} requested mob '{}'", interaction.user.name, name)
+            logger.info("{} requested calc on mob '{}'", interaction.user.name, name)
         else:
-            logger.info("{} requested mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
+            logger.info("{} requested calc on mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         if use_object_name:
             rows = await self.fetch_object_name(name)
@@ -271,8 +324,52 @@ class Mobs(commands.GroupCog, name="mob"):
             embed = discord.Embed(description=f"Unable to find {name}.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
 
+    @app_commands.command(name="calc", description="Calcs damage against a specific mob")
+    @app_commands.describe(name="The name of the mobs to search for", buffs="Your buffs separated by a space EX: 35 35 40 25")
+    async def calc(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        school: Literal["Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Shadow"],
+        base: int,
+        damage: int,
+        pierce: int,
+        critical: int,
+        use_object_name: Optional[bool] = False,
+        buffs: Optional[str] = "",
+        pvp: Optional[bool] = True,
+    ):
+        await interaction.response.defer()
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} requested mob '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} requested mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
+
+        if use_object_name:
+            rows = await self.fetch_object_name(name)
+            if not rows:
+                embed = discord.Embed(description=f"No mobs with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+        else:
+            rows = await self.fetch_mob(name)
+            if not rows:
+                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.mob_list]
+                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
+                closest_names = list(zip(*closest_names))[0]
+
+                for mob in closest_names:
+                    rows = await self.fetch_mob(mob)
+
+                    if rows:
+                        logger.info("Failed to find '{}' instead searching for {}", name, mob)
+                        break
         
-        
+        if rows:
+            embeds = [await self.build_calc_embed(row, school, base, damage, pierce, critical, buffs, pvp) for row in rows]
+            sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
+            unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
+            view = ItemView(unzipped_embeds, files=unzipped_images)
+            await view.start(interaction)
 
 
 
