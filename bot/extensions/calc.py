@@ -11,6 +11,7 @@ class Calc(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="calc", description="Simple Calculation of Damage")
+    @app_commands.describe(buffs="Your buffs separated by a space (use a \"P\" prefix to denote pierce) EX: 35 35 40 20P -50P")
     async def find(
         self, 
         interaction: discord.Interaction,
@@ -31,7 +32,7 @@ class Calc(commands.Cog):
             logger.info("{} requested calc in channel #{} of {}", interaction.user.name, interaction.channel.name, interaction.guild.name)
         
         buffs_as_modifiers = database.translate_buffs(buffs)
-        buffs_as_modifiers.append(1 - (resist / 100))
+        buffs_as_modifiers.append(database.Buff(float(-resist), True))
         no_crit, crit = database.calc_damage(base, damage, pierce, critical, buffs_as_modifiers, block, pvp)
         embed = (
             discord.Embed(

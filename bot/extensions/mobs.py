@@ -207,7 +207,7 @@ class Mobs(commands.GroupCog, name="mob"):
                 mob_block += stat.value
         
         mob_buff = sum(mob_buffs)
-        buffs_as_modifiers.append(1 - (mob_buff / 100))
+        buffs_as_modifiers.append(database.Buff(float(-mob_buff), True))
         no_crit, crit = database.calc_damage(base, damage, pierce, critical, buffs_as_modifiers, mob_block, pvp)
         
         embed = (
@@ -247,9 +247,9 @@ class Mobs(commands.GroupCog, name="mob"):
     ):
         await interaction.response.defer()
         if type(interaction.channel) is PartialMessageable:
-            logger.info("{} requested calc on mob '{}'", interaction.user.name, name)
+            logger.info("{} requested mob '{}'", interaction.user.name, name)
         else:
-            logger.info("{} requested calc on mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
+            logger.info("{} requested mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         if use_object_name:
             rows = await self.fetch_object_name(name)
@@ -325,7 +325,7 @@ class Mobs(commands.GroupCog, name="mob"):
             await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="calc", description="Calcs damage against a specific mob")
-    @app_commands.describe(name="The name of the mobs to search for", buffs="Your buffs separated by a space EX: 35 35 40 25")
+    @app_commands.describe(name="The name of the mobs to search for", buffs="Your buffs separated by a space (use a \"P\" prefix to denote pierce) EX: 35 35 40 20P -50P")
     async def calc(
         self,
         interaction: discord.Interaction,
@@ -341,9 +341,9 @@ class Mobs(commands.GroupCog, name="mob"):
     ):
         await interaction.response.defer()
         if type(interaction.channel) is PartialMessageable:
-            logger.info("{} requested mob '{}'", interaction.user.name, name)
+            logger.info("{} requested calc on mob '{}'", interaction.user.name, name)
         else:
-            logger.info("{} requested mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
+            logger.info("{} requested calc on mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         if use_object_name:
             rows = await self.fetch_object_name(name)

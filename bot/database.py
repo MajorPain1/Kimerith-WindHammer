@@ -858,39 +858,54 @@ async def sum_stats(db, existing_stats: List[StatObject], equipped_items: List[i
                 existing_stats.append(stat)
                 existing_stats_dict[stat.order] = stat
 
+class Buff:
+    def __init__(self, value, is_pierce):
+        self.value = value
+        self.modifier = (float(value) / 100) + 1
+        self.is_pierce = is_pierce
+    
+    def __repr__(self) -> str:
+        return f"{self.value=} {self.modifier=} {self.is_pierce=}"
+
 def translate_buffs(buffs: str):
     buff_list = buffs.replace("%", "").split(" ")
     buffs_as_modifier = []
     for buff in buff_list:
         try:
-            buff_int = int(buff)
-            buffs_as_modifier.append((float(buff_int) / 100) + 1)
+            if buff[-1] == "P":
+                pierce_buff = buff.removesuffix("P")
+                buff_float = float(pierce_buff)
+                buffs_as_modifier.append(Buff(buff_float, True))
+            else:
+                buff_float = float(buff)
+                buffs_as_modifier.append(Buff(buff_float, False))
+                
         except ValueError:
             pass
     
     return buffs_as_modifier
 
 def crit_multiplier(crit, block, pvp=True):
-    if pvp:
-        return 2 - ((5*block) / (crit + (5*block)))
+    if crit == 0: return 1
+    if block == 0: return 2
+    if pvp: return 2 - ((5*block) / (crit + (5*block)))
     return 2 - ((3*block) / (crit + (3*block)))
 
-def calc_damage(base, damage: int, pierce: int, critical: int, buffs: List[float], mob_block: int, pvp: bool):
+def calc_damage(base, damage: int, pierce: int, critical: int, buffs: List[Buff], mob_block: int, pvp: bool):
     ret = int(base * ((float(damage) / 100) + 1))
     
-    if buffs:
+    if buffs != []:
         for buff in buffs:
-            if buff < 1 and pierce > 0:
-                pierce_reduce = int((1 - buff) * 100)
-                if pierce >= pierce_reduce:
-                    pierce -= pierce_reduce
+            if buff.is_pierce:
+                if pierce >= -buff.value:
+                    pierce += buff.value
                     
                 else:
-                    pierce_reduce -= pierce
+                    new_buff_modifier = (pierce / 100) + buff.modifier
                     pierce = 0
-                    new_buff = float(100 - pierce_reduce) / 100
-                    ret = int(ret * new_buff)
+                    ret = int(ret * new_buff_modifier)
+                
             else:
-                ret = int(ret * buff)
+                ret = int(ret * buff.modifier)
     
     return ret, int(ret * crit_multiplier(critical, mob_block, pvp))
