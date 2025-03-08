@@ -10,6 +10,7 @@ from . import TheBot
 ROOT_DIR = Path(__file__).parent.parent
 
 ITEMS_DB = ROOT_DIR / "items.db"
+DECKS_DB = ROOT_DIR / "decks.db"
 
 # Configure Discord gateway intents which should be used by the bot.
 # See https://discordpy.readthedocs.io/en/stable/api.html#discord.Intents
@@ -28,6 +29,7 @@ def main():
 
     bot = TheBot(
         ITEMS_DB,
+        DECKS_DB,
         command_prefix=commands.when_mentioned,
         case_insensitive=True,
         allowed_mentions=discord.AllowedMentions(

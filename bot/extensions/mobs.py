@@ -102,9 +102,47 @@ class Mobs(commands.GroupCog, name="mob"):
             "SELECT * FROM mob_items WHERE mob == ?", (mob,)
         ) as cursor:
             async for row in cursor:
-                items.append(row[2])
+                items.append(row[2]) # item id
 
         return items
+    
+    async def fetch_item_names(self, ids: List[str]) -> List[str]:
+        items = []
+        placeholders = ','.join(['?'] * len(ids))
+        
+        async with self.bot.db.execute(
+            f"SELECT * FROM items WHERE id IN ({placeholders})", ids
+        ) as cursor:
+            async for row in cursor:
+                items.append(row[2])
+        
+        return items
+        
+        
+    
+    async def fetch_mob_deck(self, item_list: List[str], mob_real_name: str) -> List[tuple]:
+        deck_spells = []
+        placeholders = ','.join(['?'] * len(item_list))
+        async with self.bot.db.execute(
+            f"SELECT * FROM deck WHERE name IN ({placeholders})", item_list
+        ) as cursor:
+            async for row in cursor:
+                deck_spells.append((row[2], row[3]))
+        
+        if len(deck_spells) == 0:
+            async with self.bot.deck_db.execute(
+                f"SELECT * FROM deck WHERE name IN ({placeholders})", item_list
+            ) as cursor:
+                async for row in cursor:
+                    deck_spells.append((row[2], row[3]))
+        
+        async with self.bot.db.execute(
+            f"SELECT * FROM deck WHERE name == ?", (mob_real_name,)
+        ) as cursor:
+            async for row in cursor:
+                deck_spells.append((row[2], row[3]))
+        
+        return deck_spells
 
 
     async def build_mob_embed(self, row) -> discord.Embed:
@@ -166,6 +204,57 @@ class Mobs(commands.GroupCog, name="mob"):
 
         if extracts:
             embed.add_field(name="Extracts", value="\n".join(extracts))
+
+        discord_file = None
+        if image_file:
+            try:
+                image_name = (image_file.split("|")[-1]).split(".")[0]
+                png_file = f"{image_name}.png"
+                png_name = png_file.replace(" ", "")
+                discord_file = discord.File(f"PNG_Images\\{png_name}", filename=png_name)
+                embed.set_thumbnail(url=f"attachment://{png_name}")
+            except:
+                pass
+
+        return embed, discord_file
+
+    async def build_deck_embed(self, row) -> discord.Embed:
+        mob_id = row[0]
+        real_name = row[2]
+        decoded_name = real_name.decode("utf-8")
+        image_file = row[3].decode("utf-8")
+        title = row[4]
+        rank = row[5]
+        hp = row[6]
+        school = row[7]
+        secondary_school = row[8]
+        stunnable = row[9]
+        max_shadow = row[10]
+        has_cheats = row[11]
+        intelligence = row[12]
+        selfishness = row[13]
+        aggressiveness = row[14]
+        monstro = database.MonstrologyKind(row[15])
+        mob_name = row[17]
+
+        items = await self.fetch_mob_items(mob_id)
+        item_names = await self.fetch_item_names(items)
+        deck_spells = await self.fetch_mob_deck(item_names, real_name)
+        
+        formatted_spells = []
+        for spell in deck_spells:
+            spell_name = spell[0].decode("utf-8")
+            formatted_spells.append(f"{spell_name} x{spell[1]}")
+        
+
+        embed = (
+            discord.Embed(
+                color=database.make_school_color(school),
+                description="**Spell Deck**\n" + "\n".join(formatted_spells) or "\u200b",
+            )
+            .set_author(name=f"{mob_name}\n({decoded_name}: {mob_id})", icon_url=database.translate_school(school).url)
+        )
+        
 
         discord_file = None
         if image_file:
@@ -272,6 +361,49 @@ class Mobs(commands.GroupCog, name="mob"):
 
         if rows:
             embeds = [await self.build_mob_embed(row) for row in rows]
+            sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
+            unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
+            view = ItemView(unzipped_embeds, files=unzipped_images)
+            await view.start(interaction)
+    
+    @app_commands.command(name="deck", description="Finds a Wizard101 mob deck by name")
+    @app_commands.describe(name="The name of the mob to search for")
+    async def deck(
+        self, 
+        interaction: discord.Interaction, 
+        name: str,
+        school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Shadow"]] = "Any",
+        kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
+        rank: Optional[int] = -1,
+        use_object_name: Optional[bool] = False,
+    ):
+        await interaction.response.defer()
+        if type(interaction.channel) is PartialMessageable:
+            logger.info("{} requested mob deck '{}'", interaction.user.name, name)
+        else:
+            logger.info("{} requested mob deck '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
+
+        if use_object_name:
+            rows = await self.fetch_object_name(name)
+            if not rows:
+                embed = discord.Embed(description=f"No mobs with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+        else:
+            rows = await self.fetch_mobs_with_filter(name, school, kind, rank, return_row=True)
+            if not rows:
+                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.mob_list]
+                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
+                closest_names = list(zip(*closest_names))[0]
+
+                for mob in closest_names:
+                    rows = await self.fetch_mobs_with_filter(mob, school, kind, rank, return_row=True)
+
+                    if rows:
+                        logger.info("Failed to find '{}' instead searching for {}", name, mob)
+                        break
+
+        if rows:
+            embeds = [await self.build_deck_embed(row) for row in rows]
             sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)

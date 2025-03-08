@@ -186,7 +186,6 @@ class Spells(commands.GroupCog, name="spell"):
             else:
                 conditionals[raw_string] = 1
             
-        print(conditionals)
         indices_to_remove = []
         for key, value in conditionals.items():
             if value >= 6:
@@ -196,12 +195,10 @@ class Spells(commands.GroupCog, name="spell"):
                         indices_to_remove.append(i)
                         sections[i] = raw_string
         
-        print(indices_to_remove)
         indices_to_keep = [indices_to_remove[i] for i in range(len(indices_to_remove)) if i == 0 or indices_to_remove[i] != indices_to_remove[i - 1] + 1]
         indices_to_remove = [num for num in indices_to_remove if num not in indices_to_keep]
         result = [value for idx, value in enumerate(sections) if idx not in indices_to_remove]
-        print(result)
-        print(len(result))
+
         reconstruct = []
         for section in result:
             reconstruct.append(section.replace("Target @", f"{emojis.CHROMATIC_TARGET}").replace("Caster @", f"{emojis.CHROMATIC_CASTER}").replace("@", f"{emojis.CHROMATIC_TARGET}"))
@@ -214,8 +211,8 @@ class Spells(commands.GroupCog, name="spell"):
         effect_class = effect[4]
         param = effect[5]
         disposition = effect[6]
-        target = effect[7]
-        effect_type = effect[8]
+        target = database.EffectTarget(effect[7])
+        effect_type = database.SpellEffects(effect[8])
         heal_modifier = effect[9]
         rounds = effect[10]
         pip_num = effect[11]
@@ -232,81 +229,81 @@ class Spells(commands.GroupCog, name="spell"):
             new_line += f"{rank}: "
         
         match effect_type:
-            case "kAbsorbDamage":
+            case database.SpellEffects.absorb_damage:
                 if protected:
                     new_line += f"{param} {school}{emojis.PABSORB}"
                 else:
                     new_line += f"{param} {school}{emojis.ABSORB}"
                     
-            case "kAbsorbHeal":
+            case database.SpellEffects.absorb_heal:
                 if protected:
                     new_line += f"{param} {emojis.HEART}{emojis.PABSORB}"
                 else:
                     new_line += f"{param} {emojis.HEART}{emojis.ABSORB}"
                     
-            case "kAddCombatTriggerList":
+            case database.SpellEffects.add_combat_trigger_list:
                 new_line += f"Add to Combat Trigger List"
-            case "kAddSpellToDeck":
-                object_name = (await self.fetch_object_name_from_id(param))[0][3].decode("utf-8")
+            case database.SpellEffects.add_spell_to_deck:
+                object_name = (await self.fetch_object_name_from_id(param))[0][3].decode("utf-8").replace("_", "\_")
                 new_line += f"Add {object_name} To Deck"
-            case "kAddSpellToHand":
-                object_name = (await self.fetch_object_name_from_id(param))[0][3].decode("utf-8")
+            case database.SpellEffects.add_spell_to_hand:
+                object_name = (await self.fetch_object_name_from_id(param))[0][3].decode("utf-8").replace("_", "\_")
                 new_line += f"Add {object_name} To Hand"
-            case "kAfterlife":
+            case database.SpellEffects.after_life:
                 new_line += f"{param} {school}{emojis.HEART} {emojis.AFTERLIFE}"
-            case "kAutoPass":
+            case database.SpellEffects.auto_pass:
                 new_line += f"Auto Pass"
-            case "kBacklashDamage":
+            case database.SpellEffects.backlash_damage:
                 new_line += f"{school} Backlash"
-            case "kCloakedCharm":
+            case database.SpellEffects.cloaked_charm:
                 if protected:
                     new_line += f"{param}% {emojis.CLOAK}{school}{emojis.PCHARM}"
                 else:
                     new_line += f"{param}% {emojis.CLOAK}{school}{emojis.CHARM}"
                 
-            case "kCloakedWard":
+            case database.SpellEffects.cloaked_ward:
                 if protected:
                     new_line += f"{param}% {emojis.CLOAK}{school}{emojis.PWARD}"
                 else:
                     new_line += f"{param}% {emojis.CLOAK}{school}{emojis.WARD}"
                 
-            case "kCloakedWardNoRemove":
+            case database.SpellEffects.cloaked_ward_no_remove:
                 if protected:
                     new_line += f"{param}% {emojis.CLOAK}{school}{emojis.PWARD} No Remove"
                 else:
                     new_line += f"{param}% {emojis.CLOAK}{school}{emojis.WARD} No Remove"
                 
-            case "kClue":
+            case database.SpellEffects.clue:
                 new_line += f"Spy {param}{emojis.ROUNDS}"
-            case "kCollectEssence":
+            case database.SpellEffects.collect_essence:
                 new_line += f"Extract"
-            case "kConfusion":
+            case database.SpellEffects.confusion:
                 new_line += f"{param}% Confuse"
-            case "kCritBlock":
+            case database.SpellEffects.crit_block:
                 new_line += f"{param}% {school}{emojis.BLOCK}"
-            case "kCritBoost" | "kCritBoostSchoolSpecific":
+            case database.SpellEffects.crit_boost | database.SpellEffects.crit_boost_school_specific:
                 new_line += f"{param}% {school}{emojis.CRIT}"
-            case "kDamage":
+            case database.SpellEffects.damage:
                 new_line += f"{param} {school}{emojis.DAMAGE}"
-            case "kDamageNoCrit":
+            case database.SpellEffects.damage_no_crit:
                 new_line += f"{param} {school}{emojis.DAMAGE} No Crit"
-            case "kDamageOverTime":
+            case database.SpellEffects.damage_over_time:
                 if protected:
                     new_line += f"{param} {school}{emojis.PDOT}"
                 else:
                     new_line += f"{param} {school}{emojis.DOT}"
                     
-            case "kDamagePerTotalPipPower":
+            case database.SpellEffects.damage_per_total_pip_power:
                 new_line += f"{rounds} {school}{emojis.DAMAGE} per {emojis.ALL_ENEMIES}{emojis.PIP}"
-            case "kDampen":
+            case database.SpellEffects.dampen:
                 new_line += f"Max {param} {emojis.PIP}"
-            case "kDeferredDamage":
+            case database.SpellEffects.deferred_damage:
                 if protected:
                     new_line += f"{param} {school}{emojis.PBOMB}"
                 else:
                     new_line += f"{param} {school}{emojis.BOMB}"
                     
-            case "kDetonateOverTime":
+            case database.SpellEffects.detonate_over_time:
                 match disposition:
                     case 0:
                         new_line += f"Detonate {int(heal_modifier*100)}% {param} {emojis.DOT}/{emojis.HOT}"
@@ -315,62 +312,62 @@ class Spells(commands.GroupCog, name="spell"):
                     case 2:
                         new_line += f"Detonate {int(heal_modifier*100)}% {param} {emojis.DOT}"
             
-            case "kDispel":
+            case database.SpellEffects.dispel:
                 new_line += f"{emojis.DISPEL}{school}"
-            case "kDispelBlock":
+            case database.SpellEffects.dispel_block:
                 new_line += f"{emojis.DISPEL} Block"
-            case "kDivideDamage":
+            case database.SpellEffects.divide_damage:
                 new_line += f"Divide {param} {school}{emojis.DAMAGE}"
-            case "kExitCombat":
+            case database.SpellEffects.exit_combat:
                 new_line += f"Exit Combat"
-            case "kForceTargetable":
+            case database.SpellEffects.force_targetable:
                 new_line += f"Force Targetable"
-            case "kHeal" | "kHealByWard" | "kSetHealPercent":
+            case database.SpellEffects.heal | database.SpellEffects.heal_by_ward | database.SpellEffects.heal_percent:
                 new_line += f"{param} {school}{emojis.HEART}"
-            case "kHealOverTime":
+            case database.SpellEffects.heal_over_time:
                 new_line += f"{param} {school}{emojis.HOT}"
-            case "kHealPercent" | "kMaxHealthHeal":
+            case database.SpellEffects.heal_percent | database.SpellEffects.max_health_heal:
                 new_line += f"{param}% {school}{emojis.HEART}"
-            case "kInstantKill":
+            case database.SpellEffects.instant_kill:
                 new_line += f"{param} {school} Instant Kill"
-            case "kInvalidSpellEffect":
+            case database.SpellEffects.invalid_spell_effect:
                 new_line += f"Invalid Spell Effect"
-            case "kKillCreature":
+            case database.SpellEffects.kill_creature:
                 mob_name = (await self.fetch_mob_object_name_from_id(param))[0][2].decode("utf-8")
                 new_line += f"Kill {mob_name}"
-            case "kMakeTargetable":
+            case database.SpellEffects.make_targetable:
                 new_line += f"Make Targetable"
-            case "kMaxHealthDamage":
+            case database.SpellEffects.max_health_damage:
                 new_line += f"{param}% Max HP {school}{emojis.DAMAGE}"
-            case "kMaximumIncomingDamage":
+            case database.SpellEffects.maximum_incoming_damage:
                 new_line += f"{param} Equalize"
-            case "kMindControl":
+            case database.SpellEffects.mind_control:
                 new_line += f"Beguile {param}{emojis.ROUNDS}"
-            case "kModifyAccuracy" | "kModifyCardAccuracy":
+            case database.SpellEffects.modify_accuracy | database.SpellEffects.modify_card_accuracy | database.SpellEffects.modify_card_outgoing_accuracy:
                 new_line += f"{param}% {school}{emojis.ACCURACY}"
-            case "kModifyCardArmorPiercing" | "kModifyCardOutgoingArmorPiercing":
+            case database.SpellEffects.modify_card_armor_piercing | database.SpellEffects.modify_card_outgoing_armor_piercing:
                 new_line += f"+{param}% {school}{emojis.PIERCE}"
-            case "kModifyCardCloak":
+            case database.SpellEffects.modify_card_cloak:
                 new_line += f"{emojis.CLOAK}"
-            case "kModifyCardDamage":
+            case database.SpellEffects.modify_card_damage:
                 new_line += f"+{param} {emojis.DAMAGE}"
-            case "kModifyCardDamagebyRank":
+            case database.SpellEffects.modify_card_damage_by_rank:
                 new_line += f"+{param} per {emojis.PIP} (MAX: {rounds})"
-            case "kModifyCardHeal":
+            case database.SpellEffects.modify_card_heal:
                 new_line += f"+{param} {emojis.HEART}"
-            case "kModifyCardIncomingDamage":
+            case database.SpellEffects.modify_card_incoming_damage:
                 match disposition:
                     case 0 | 1:
                         new_line += f"{param}% {emojis.WARD}"
                     case 2:
                         new_line += f"+{param}% {emojis.TRAP}"
             
-            case "kModifyCardMutation":
+            case database.SpellEffects.modify_card_mutation:
                 object_name = await self.fetch_object_name_from_id(param)
                 new_line += f"Mutate to {object_name}"
-            case "kModifyCardRank":
+            case database.SpellEffects.modify_card_rank:
                 new_line += f"Modify Rank by {param} {emojis.PIP}"
-            case "kModifyHate":
+            case database.SpellEffects.modify_hate:
                 if param > 0:
                     new_line += f"+{param} Hate"
                 elif param < 0:
@@ -378,7 +375,7 @@ class Spells(commands.GroupCog, name="spell"):
                 else:
                     new_line += f"Devour"
             
-            case "kModifyIncomingArmorPiercing":
+            case database.SpellEffects.modify_incoming_armor_piercing:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.TRAP}"
@@ -395,7 +392,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.PIERCE}"
             
-            case "kModifyIncomingDamage":
+            case database.SpellEffects.modify_incoming_damage:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.TRAP}"
@@ -412,7 +409,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.DAMAGE}"
             
-            case "kModifyIncomingDamageFlat":
+            case database.SpellEffects.modify_incoming_damage_flat:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.TRAP}"
@@ -429,7 +426,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param} {school}{emojis.FLAT_DAMAGE}"
             
-            case "kModifyIncomingDamageOverTime":
+            case database.SpellEffects.modify_incoming_damage_over_time:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.DOT}{emojis.JINX}"
@@ -446,9 +443,9 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.DOT}{emojis.DAMAGE}"
             
-            case "kModifyIncomingDamageType":
+            case database.SpellEffects.modify_incoming_damage_type:
                 new_line += f"Convert {school} to {database.school_prism_values[param]} {emojis.JINX}"
-            case "kModifyIncomingHeal":
+            case database.SpellEffects.modify_incoming_heal:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HEART}{emojis.JINX}"
@@ -465,7 +462,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.HEART}"
             
-            case "kModifyIncomingHealFlat":
+            case database.SpellEffects.modify_incoming_heal_flat:
                 if rounds == 0:
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.HEART}"
@@ -477,7 +474,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param} {school}{emojis.HEART}{emojis.AURA_NEGATIVE}"
             
-            case "kModifyIncomingHealOverTime":
+            case database.SpellEffects.modify_incoming_heal_over_time:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HOT}{emojis.JINX}"
@@ -494,7 +491,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.HOT}"
             
-            case "kModifyOutgoingArmorPiercing":
+            case database.SpellEffects.modify_outgoing_armor_piercing:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.CHARM}"
@@ -511,7 +508,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.PIERCE}"
             
-            case "kModifyOutgoingDamage":
+            case database.SpellEffects.modify_outgoing_damage:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.BLADE}"
@@ -528,7 +525,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.DAMAGE}"
             
-            case "kModifyOutgoingDamageFlat":
+            case database.SpellEffects.modify_outgoing_damage_flat:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.BLADE}"
@@ -545,9 +542,9 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param} {school}{emojis.FLAT_DAMAGE}"
             
-            case "kModifyOutgoingDamageType":
+            case database.SpellEffects.modify_outgoing_damage_type:
                 new_line += f"Convert {school} to {database.school_prism_values[param]} {emojis.CHARM}"
-            case "kModifyOutgoingHeal":
+            case database.SpellEffects.modify_outgoing_heal:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HEART}{emojis.CHARM}"
@@ -564,7 +561,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.HEART}"
                         
-            case "kModifyOutgoingHealFlat":
+            case database.SpellEffects.modify_outgoing_heal_flat:
                 if rounds == 0 and target != "kGlobal":
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.HEART}{emojis.CHARM}"
@@ -581,155 +578,155 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param} {school}{emojis.HEART}"
             
-            case "kModifyOverTimeDuration":
+            case database.SpellEffects.modify_over_time_duration:
                 match disposition:
                     case 0 | 1:
                         new_line += f"Add {emojis.HOT}"
                     case 2:
                         new_line += f"Add {emojis.DOT}"
             
-            case "kModifyPipRoundRate":
+            case database.SpellEffects.modify_pip_round_rate:
                 if param >= 0:
                     new_line += f"+{param} {emojis.PIP} Gain Per Round"
                 else:
                     new_line += f"{param} {emojis.PIP} Gain Per Round"
             
-            case "kModifyPips":
+            case database.SpellEffects.modify_pips:
                 if param >= 0:
                     new_line += f"+{param} {emojis.PIP}"
                 else:
                     new_line += f"{param} {emojis.PIP}"
             
-            case "kModifyPowerPipChance":
+            case database.SpellEffects.modify_power_pip_chance:
                 if param >= 0:
                     new_line += f"+{param}% {emojis.POWER_PIP} Chance"
                 else:
                     new_line += f"{param}% {emojis.POWER_PIP} Chance"
             
-            case "kModifyPowerPips":
+            case database.SpellEffects.modify_power_pips:
                 if param >= 0:
                     new_line += f"+{param} {emojis.POWER_PIP}"
                 else:
                     new_line += f"{param} {emojis.POWER_PIP}"
             
-            case "kModifyRank":
+            case database.SpellEffects.modify_rank:
                 if param >= 0:
                     new_line += f"+{param} {school} Rank"
                 else:
                     new_line += f"{param} {school} Rank"
             
-            case "kModifySchoolPips":
+            case database.SpellEffects.modify_school_pips:
                 if param >= 0:
                     new_line += f"+{param} {school}{emojis.POWER_PIP}"
                 else:
                     new_line += f"{param} {school}{emojis.POWER_PIP}"
             
-            case "kModifyShadowCreatureLevel":
+            case database.SpellEffects.modify_shadow_creature_level:
                 if param >= 0:
                     new_line += f"+{param} Shadow Creature Level"
                 else:
                     new_line += f"{param} Shadow Creature Level"
             
-            case "kModifyShadowPips":
+            case database.SpellEffects.modify_shadow_pips:
                 if param >= 0:
                     new_line += f"+{param} {emojis.SHADOW_PIP}"
                 else:
                     new_line += f"{param} {emojis.SHADOW_PIP}"
             
-            case "kPacify":
+            case database.SpellEffects.pacify:
                 new_line += f"Pacify"
-            case "kPipConversion":
+            case database.SpellEffects.pip_conversion:
                 if param >= 0:
                     new_line += f"+{param} {emojis.PIP} from Incoming Rank {pip_num} Spells"
                 else:
                     new_line += f"{param} {emojis.PIP} from Incoming Rank {pip_num} Spells"
-            case "kPolymorph":
+            case database.SpellEffects.polymorph:
                 new_line += f"Polymorph into {param}"
-            case "kPowerPipConversion":
+            case database.SpellEffects.power_pip_conversion:
                 if param >= 0:
                     new_line += f"+{param} {emojis.POWER_PIP} from Incoming Rank {pip_num} Spells"
                 else:
                     new_line += f"{param} {emojis.POWER_PIP} from Incoming Rank {pip_num} Spells"
-            case "kProtectCardBeneficial":
+            case database.SpellEffects.protect_card_beneficial:
                 new_line += f"Protect {emojis.CHARM}"
-            case "kProtectCardHarmful":
+            case database.SpellEffects.protect_card_harmful:
                 new_line += f"Protect {emojis.JINX}"
-            case "kPushCharm":
+            case database.SpellEffects.push_charm:
                 new_line += f"Push {param} {emojis.CURSE}"
-            case "kPushOverTime":
+            case database.SpellEffects.push_over_time:
                 new_line += f"Push {param} {emojis.DOT}"
-            case "kPushWard":
+            case database.SpellEffects.push_ward:
                 new_line += f"Push {param} {emojis.JINX}"
-            case "kReduceOverTime":
+            case database.SpellEffects.reduce_over_time:
                 new_line += f"{param} {emojis.DOT}{emojis.ROUNDS}"
-            case "kRemoveAura":
+            case database.SpellEffects.remove_aura:
                 new_line += f"Remove {emojis.AURA}"
-            case "kRemoveCharm":
+            case database.SpellEffects.remove_charm:
                 match disposition:
                     case 0 | 1:
                         new_line += f"Remove {param} {emojis.CHARM}"
                     case 2:
                         new_line += f"Remove {param} {emojis.CURSE}"
-            case "kRemoveCombatTriggerList":
+            case database.SpellEffects.remove_combat_trigger_list:
                 new_line += "Remove Combat Trigger List"
-            case "kRemoveOverTime":
+            case database.SpellEffects.remove_over_time:
                 match disposition:
                     case 0 | 1:
                         new_line += f"Remove {param} {emojis.HOT}"
                     case 2:
                         new_line += f"Remove {param} {emojis.DOT}"
-            case "kRemoveStunBlock":
+            case database.SpellEffects.remove_stun_block:
                 new_line += f"Remove {emojis.STUN_BLOCK}"
-            case "kRemoveWard":
+            case database.SpellEffects.remove_ward:
                 match disposition:
                     case 0 | 1:
                         new_line += f"Remove {param} {emojis.WARD}"
                     case 2:
                         new_line += f"Remove {param} {emojis.JINX}"
-            case "kReshuffle":
+            case database.SpellEffects.reshuffle:
                 new_line += "Reshuffle"
-            case "kResumePips":
+            case database.SpellEffects.resume_pips:
                 new_line += "Resume Pips"
-            case "kSelectShadowCreatureAttackTarget":
+            case database.SpellEffects.select_shadow_creature_attack_target:
                 new_line += "Select Shadow Creature Attack Target"
-            case "kShadowDecrementTurn":
+            case database.SpellEffects.shadow_decrement_turn:
                 new_line += "Shadow Decrement Turn"
-            case "kSpawnCreature" | "kSummonCreature":
-                mob_name = (await self.fetch_mob_object_name_from_id(param))[0][2].decode("utf-8")
+            case database.SpellEffects.spawn_creature | database.SpellEffects.summon_creature:
+                mob_name = (await self.fetch_mob_object_name_from_id(param))[0][2].decode("utf-8").replace("_", "\_")
                 new_line += f"Summon {mob_name}"
-            case "kStealCharm":
+            case database.SpellEffects.steal_charm:
                 match disposition:
                     case 0 | 1:
                         new_line += f"Steal {param} {emojis.CHARM}"
                     case 2:
                         new_line += f"Push {param} {emojis.CURSE}"
-            case "kStealHealth":
+            case database.SpellEffects.steal_health:
                 new_line += f"{param} {school}{emojis.STEAL} ({heal_modifier*100}%)"
-            case "kStealOverTime":
+            case database.SpellEffects.steal_over_time:
                 match disposition:
                     case 0 | 1:
                         new_line += f"Steal {param} {emojis.HOT}"
                     case 2:
                         new_line += f"Push {param} {emojis.DOT}"
-            case "kStealWard":
+            case database.SpellEffects.steal_ward:
                 match disposition:
                     case 0 | 1:
                         new_line += f"Steal {param} {emojis.WARD}"
                     case 2:
                         new_line += f"Push {param} {emojis.JINX}"
-            case "kStopAutoPass":
+            case database.SpellEffects.stop_auto_pass:
                 new_line += "Stop Auto Pass"
-            case "kStopVanish":
+            case database.SpellEffects.stop_vanish:
                 new_line += "Stop Vanish"
-            case "kStun":
+            case database.SpellEffects.stun:
                 new_line += f"{emojis.STUN} {param}{emojis.ROUNDS}"
-            case "kStunBlock":
+            case database.SpellEffects.stun_block:
                 new_line += f"{param} {emojis.STUN_BLOCK}"
-            case "kSuspendPips":
+            case database.SpellEffects.suspend_pips:
                 new_line += "Suspend Pips"
-            case "kSwapAll":
+            case database.SpellEffects.swap_all:
                 new_line += "Swap All"
-            case "kSwapCharm":
+            case database.SpellEffects.swap_charm:
                 match disposition:
                     case 0:
                         new_line += f"Swap {emojis.CHARM}/{emojis.CURSE}"
@@ -737,7 +734,7 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"Swap {emojis.CHARM}"
                     case 2:
                         new_line += f"Swap {emojis.CURSE}"
-            case "kSwapOverTime":
+            case database.SpellEffects.swap_over_time:
                 match disposition:
                     case 0:
                         new_line += f"Swap {emojis.DOT}/{emojis.HOT}"
@@ -745,7 +742,7 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"Swap {emojis.HOT}"
                     case 2:
                         new_line += f"Swap {emojis.DOT}"
-            case "kSwapWard":
+            case database.SpellEffects.swap_ward:
                 match disposition:
                     case 0:
                         new_line += f"Swap {emojis.WARD}/{emojis.JINX}"
@@ -753,41 +750,53 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"Swap {emojis.WARD}"
                     case 2:
                         new_line += f"Swap {emojis.JINX}"
-            case "kTaunt":
+            case database.SpellEffects.taunt:
                 new_line += f"Taunt"
-            case "kUnPolymorph":
+            case database.SpellEffects.un_polymorph:
                 new_line += f"Unpolymorph"
-            case "kUntargetable":
+            case database.SpellEffects.untargetable:
                 new_line += f"Untargetable"
-            case "kVanish":
+            case database.SpellEffects.vanish:
                 new_line += f"Vanish"
 
-        if rounds > 0 and not effect_type in ["kMaxHealthDamage", "kDamageNoCrit", "kDamage", "kClue", "kDamagePerTotalPipPower", "kDetonateOverTime", "kHealByWard", "kMindControl", "kModifyCardDamagebyRank", "kStun"]:
+        no_round_list = [
+            database.SpellEffects.max_health_damage, 
+            database.SpellEffects.damage_no_crit, 
+            database.SpellEffects.damage, 
+            database.SpellEffects.clue, 
+            database.SpellEffects.damage_per_total_pip_power, 
+            database.SpellEffects.detonate_over_time, 
+            database.SpellEffects.heal_by_ward, 
+            database.SpellEffects.mind_control, 
+            database.SpellEffects.modify_card_damage_by_rank, 
+            database.SpellEffects.stun
+        ]
+        if rounds > 0 and not effect_type in no_round_list:
             new_line += f" {rounds}{emojis.ROUNDS}"
         
         match target:
-            case "kEnemyTeamAllAtOnce" | "kEnemyTeam":
+            case database.EffectTarget.enemy_team_all_at_once | database.EffectTarget.enemy_team:
                 new_line += f" {emojis.ALL_ENEMIES_SQUARE}"
-            case "kSpell" | "kSpecificSpells":
+            case database.EffectTarget.spell | database.EffectTarget.specific_spells:
                 new_line += f" {emojis.ENCHANTMENT}"
-            case "kSelf":
+            case database.EffectTarget.self:
                 new_line += f" {emojis.SELF}"
-            case "kEnemySingle":
+            case database.EffectTarget.enemy_single:
                 new_line += f" {emojis.ALL_ENEMIES}"
-            case "kFriendlyTeam" | "kFriendlyTeamAllAtOnce":
+            case database.EffectTarget.friendly_team | database.EffectTarget.friendly_team_all_at_once:
                 new_line += f" {emojis.ALL_FRIENDS_SQUARE}"
-            case "kFriendlySingle":
+            case database.EffectTarget.friendly_single:
                 new_line += f" {emojis.ALL_FRIENDS}"
-            case "kGlobal":
+            case database.EffectTarget.target_global:
                 new_line += f" {emojis.GLOBAL}"
-            case "kMinion":
+            case database.EffectTarget.minion:
                 new_line += f" {emojis.MINION}"
-            case "kMultiTargetEnemy":
+            case database.EffectTarget.multi_target_enemy:
                 new_line += f" {emojis.ALL_ENEMIES_SELECT}"
-            case "kMultiTargetFriendly":
+            case database.EffectTarget.multi_target_friendly:
                 new_line += f" {emojis.ALL_FRIENDS_SELECT}"
         
-        if effect_type != "kInvalidSpellEffect":
+        if effect_type != database.SpellEffects.invalid_spell_effect:
             return new_line
         else:
             return ""
@@ -803,7 +812,7 @@ class Spells(commands.GroupCog, name="spell"):
             param = effect[5]
             disposition = effect[6]
             target = effect[7]
-            effect_type = effect[8]
+            effect_type = database.SpellEffects(effect[8])
             heal_modifier = effect[9]
             rounds = effect[10]
             pip_num = effect[11]
@@ -812,7 +821,7 @@ class Spells(commands.GroupCog, name="spell"):
             school = database.translate_school(effect[14])
             condition = effect[15]
 
-            if effect_type != "kInvalidSpellEffect" and effect_type != "kShadowSelf" and effect_type != "kConvertHangingEffect":
+            if effect_type != database.SpellEffects.invalid_spell_effect and effect_type != database.SpellEffects.shadow_self and effect_type != database.SpellEffects.convert_hanging_effect:
                 new_line = await self.get_string_from_effect(effect, parent_is_x_pip=parent_is_x_pip, parent_is_convert=parent_is_convert)
                 effect_string.append(f"{new_line}\n")
             
@@ -974,7 +983,10 @@ class Spells(commands.GroupCog, name="spell"):
                 parsed_description = "Description Not Found"
 
         if school == 12:
-            type_string = database.GARDENING_TYPES[type_name]
+            try:
+                type_string = database.GARDENING_TYPES[type_name]
+            except IndexError:
+                type_string = database._SPELL_TYPES[type_name]
         elif school == 14:
             type_string = database.FISHING_TYPES[type_name]
         elif school == 15:

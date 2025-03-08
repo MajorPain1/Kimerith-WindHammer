@@ -109,6 +109,7 @@ venv.bak/
 
 # Storage
 items.db
+decks.db
 PNG_Images
 SummonedImages
 

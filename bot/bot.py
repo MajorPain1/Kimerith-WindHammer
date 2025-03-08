@@ -35,12 +35,14 @@ INNER JOIN locale_en ON locale_en.id == fish.name
 """
 
 class TheBot(commands.Bot):
-    def __init__(self, db_path: Path, **kwargs):
+    def __init__(self, db_path: Path, deck_db_path: Path, **kwargs):
         super().__init__(**kwargs)
 
         self.ready_once = False
         self.db_path = db_path
+        self.deck_db_path = deck_db_path
         self.db = None
+        self.deck_db = None
         self.item_list = []
         self.spell_list = []
         self.mob_list = []
@@ -58,6 +60,10 @@ class TheBot(commands.Bot):
         async with aiosqlite.connect(self.db_path) as db:
             self.db = await aiosqlite.connect(":memory:")
             await db.backup(self.db)
+        
+        async with aiosqlite.connect(self.deck_db_path) as db:
+            self.deck_db = await aiosqlite.connect(":memory:")
+            await db.backup(self.deck_db)
 
         # Make our item list        
         async with self.db.execute(FIND_ITEM_NAME_QUERY) as cursor:
