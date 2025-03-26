@@ -18,6 +18,16 @@ LEFT JOIN locale_en ON locale_en.id == fish.name
 WHERE locale_en.data == ? COLLATE NOCASE
 """
 
+FIND_FISH_WITH_FILTER_QUERY = """
+SELECT * FROM fish
+INNER JOIN locale_en ON locale_en.id == fish.name
+WHERE locale_en.data COLLATE NOCASE IN ({placeholders})
+AND (? = 'Any' OR fish.school = ?)
+AND (? = -1 OR fish.rank = ?)
+AND (? IS NULL OR fish.is_sentinel = ?)
+COLLATE NOCASE
+"""
+
 FIND_OBJECT_NAME_QUERY = """
 SELECT * FROM fish
 INNER JOIN locale_en ON locale_en.id == fish.name
@@ -41,31 +51,33 @@ class Fish(commands.GroupCog, name="fish"):
             return await cursor.fetchall()
         
     async def fetch_fish_with_filter(self, fish: List[str], school: Optional[str] = "Any", rank: Optional[int] = -1, is_sentinel: Optional[bool] = None, return_row=False):
-        filtered_fish = []
+        if isinstance(fish, str):
+            fish = [fish]
 
-        if type(fish) == str:
-            list_fish = []
-            list_fish.append(fish)
-            fish = list_fish
+        results = []
+        
+        school_val = (database._SCHOOLS_STR.index(school) + 2) if school != "Any" else None
 
-        for fish in fish:
-            rows = await self.fetch_fish(fish)
-            for row in rows:
-                school_idx = row[8] - 2
-                rank_idx = row[6]
-                sentinel_idx = bool(row[7])
+        for chunk in database.sql_chunked(fish, 900):  # Stay under SQLite's limit
+            placeholders = database._make_placeholders(len(chunk))
+            query = FIND_FISH_WITH_FILTER_QUERY.format(placeholders=placeholders)
 
-                matches_school = school == "Any" or school_idx == database._SCHOOLS_STR.index(school)
-                matches_rank =  rank == -1 or rank_idx == rank
-                matches_kind = is_sentinel == None or is_sentinel == sentinel_idx
+            args = (
+                *chunk,
+                school, school_val,
+                rank, rank,
+                is_sentinel, is_sentinel
+            )
 
-                if matches_school and matches_kind and matches_rank:
-                    if return_row:
-                        filtered_fish.append(row)
-                    else:
-                        filtered_fish.append(row[-1])
-                    
-        return filtered_fish
+            async with self.bot.db.execute(query, args) as cursor:
+                rows = await cursor.fetchall()
+
+            if return_row:
+                results.extend(rows)
+            else:
+                results.extend(row[-1] for row in rows)
+
+        return results
 
     async def build_fish_embed(self, row):
         fish_id = row[0]
@@ -137,6 +149,10 @@ class Fish(commands.GroupCog, name="fish"):
         if rows:
             view = ItemView([await self.build_fish_embed(row) for row in rows])
             await view.start(interaction)
+        else:
+            logger.info("Failed to find '{}'", name)
+            embed = discord.Embed(description=f"No fish with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="list", description="Finds a list of fish names that contain the string")
     @app_commands.describe(name="The name of the fish to search for")
@@ -158,7 +174,7 @@ class Fish(commands.GroupCog, name="fish"):
         for fish in self.bot.fish_list:
             fish: str
 
-            if name.lower() in fish.lower():
+            if name == '*' or name.lower() in fish.lower():
                 fish_containing_name.append(fish)
 
         no_duplicate_fish = [*set(fish_containing_name)]

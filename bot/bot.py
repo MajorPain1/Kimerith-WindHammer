@@ -145,6 +145,7 @@ class TheBot(commands.Bot):
 
     async def close(self):
         await self.db.close()
+        await self.deck_db.close()
 
     def run(self):
         super().run(os.environ["DISCORD_TOKEN"])

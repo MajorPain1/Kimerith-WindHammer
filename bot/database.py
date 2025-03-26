@@ -992,7 +992,7 @@ class SpellEffects(Enum):
     stun_block = 79
     reveal_cloak = 80
     instant_kill = 81
-    afterlife = 82
+    after_life = 82
     deferred_damage = 83
     damage_per_total_pip_power = 84
     modify_card_heal = 52
@@ -1084,3 +1084,11 @@ class EffectTarget(Enum):
     multi_target_enemy = 14
     multi_target_friendly = 15
     friendly_single_not_me = 16
+
+
+def _make_placeholders(count: int) -> str:
+    return ", ".join(["?"] * count)
+
+def sql_chunked(lst, size):
+    for i in range(0, len(lst), size):
+        yield lst[i:i + size]

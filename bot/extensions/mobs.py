@@ -7,7 +7,7 @@ from discord import app_commands, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
-from ..database import StatObject
+from ..database import StatObject, _make_placeholders, sql_chunked
 from .. import TheBot, database, emojis
 from ..menus import ItemView
 
@@ -17,6 +17,17 @@ SELECT * FROM mobs
 INNER JOIN locale_en ON locale_en.id == mobs.name
 WHERE locale_en.data == ? COLLATE NOCASE
 """
+
+FIND_MOB_WITH_FILTER_QUERY = """
+SELECT * FROM mobs
+INNER JOIN locale_en ON locale_en.id == mobs.name
+WHERE locale_en.data COLLATE NOCASE IN ({placeholders})
+AND (? = 'Any' OR mobs.primary_school = ?)
+AND (? = 'Any' OR mobs.title = ?)
+AND (? = -1 OR mobs.rank = ?)
+COLLATE NOCASE
+"""
+
 
 FIND_OBJECT_NAME_QUERY = """
 SELECT * FROM mobs
@@ -38,31 +49,33 @@ class Mobs(commands.GroupCog, name="mob"):
             return await cursor.fetchall()
 
     async def fetch_mobs_with_filter(self, mobs, school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
-        filtered_mobs = []
+        if isinstance(mobs, str):
+            mobs = [mobs]
 
-        if type(mobs) == str:
-            list_mob = []
-            list_mob.append(mobs)
-            mobs = list_mob
+        results = []
+        
+        school_val = (database._SCHOOLS_STR.index(school) + 2) if school != "Any" else None
 
-        for mob in mobs:
-            rows = await self.fetch_mob(mob)
-            for row in rows:
-                school_idx = row[7] - 2
-                title = row[4]
-                mob_rank = row[5]
+        for chunk in sql_chunked(mobs, 900):  # Stay under SQLite's limit
+            placeholders = _make_placeholders(len(chunk))
+            query = FIND_MOB_WITH_FILTER_QUERY.format(placeholders=placeholders)
 
-                matches_school = school == "Any" or school_idx == database._SCHOOLS_STR.index(school)
-                matches_kind =  kind == "Any" or title == kind
-                matches_level = rank == -1 or mob_rank == rank
+            args = (
+                *chunk,
+                school, school_val,
+                kind, kind,
+                rank, rank
+            )
 
-                if matches_school and matches_kind and matches_level:
-                    if return_row:
-                        filtered_mobs.append(row)
-                    else:
-                        filtered_mobs.append(row[-1])
+            async with self.bot.db.execute(query, args) as cursor:
+                rows = await cursor.fetchall()
 
-        return filtered_mobs
+            if return_row:
+                results.extend(rows)
+            else:
+                results.extend(row[-1] for row in rows)
+
+        return results
 
     async def fetch_mob_stats(self, mob: int) -> List[StatObject]:
         stats = []
@@ -365,6 +378,10 @@ class Mobs(commands.GroupCog, name="mob"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
+        else:
+            logger.info("Failed to find '{}'", name)
+            embed = discord.Embed(description=f"No mobs with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
     
     @app_commands.command(name="deck", description="Finds a Wizard101 mob deck by name")
     @app_commands.describe(name="The name of the mob to search for")
@@ -408,6 +425,10 @@ class Mobs(commands.GroupCog, name="mob"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
+        else:
+            logger.info("Failed to find '{}'", name)
+            embed = discord.Embed(description=f"No mobs with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="list", description="Finds a list of mob names that contain the string")
     @app_commands.describe(name="The name of the mobs to search for")
@@ -429,7 +450,7 @@ class Mobs(commands.GroupCog, name="mob"):
         for mob in self.bot.mob_list:
             mob: str
 
-            if name.lower() in mob.lower():
+            if name == '*' or name.lower() in mob.lower():
                 mobs_containing_name.append(mob)
 
         no_duplicate_mobs = [*set(mobs_containing_name)]
@@ -502,6 +523,10 @@ class Mobs(commands.GroupCog, name="mob"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
+        else:
+            logger.info("Failed to find '{}'", name)
+            embed = discord.Embed(description=f"No mobs with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
 
 
 

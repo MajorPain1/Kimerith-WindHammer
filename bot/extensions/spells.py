@@ -39,6 +39,16 @@ SELECT * FROM mobs
 WHERE mobs.id == ?
 """
 
+FIND_SPELLS_WITH_FILTER_QUERY = """
+SELECT * FROM spells
+INNER JOIN locale_en ON locale_en.id == spells.name
+WHERE locale_en.data COLLATE NOCASE IN ({placeholders})
+AND (? = 'Any' OR spells.school = ?)
+AND (? = 'Any' OR spells.form = ?)
+AND (? = -1 OR spells.rank = ?)
+COLLATE NOCASE
+"""
+
 def remove_indices(lst, indices):
     return [value for index, value in enumerate(lst) if index not in indices]
 
@@ -64,31 +74,34 @@ class Spells(commands.GroupCog, name="spell"):
             return await cursor.fetchall()
         
     async def fetch_spells_with_filter(self, spells: List[str], school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
-        filtered_spells = []
+        if isinstance(spells, str):
+            spells = [spells]
 
-        if type(spells) == str:
-            list_spell = []
-            list_spell.append(spells)
-            spells = list_spell
+        results = []
+        
+        school_val = (database._SCHOOLS_STR.index(school) + 2) if school != "Any" else None
+        kind_val = database._SPELL_TYPES.index(kind) if kind != "Any" else None
 
-        for spell in spells:
-            rows = await self.fetch_spell(spell)
-            for row in rows:
-                school_idx = row[7] - 2
-                kind_idx = row[9]
-                spell_rank = row[10]
+        for chunk in database.sql_chunked(spells, 900):  # Stay under SQLite's limit
+            placeholders = database._make_placeholders(len(chunk))
+            query = FIND_SPELLS_WITH_FILTER_QUERY.format(placeholders=placeholders)
 
-                matches_school = school == "Any" or school_idx == database._SCHOOLS_STR.index(school)
-                matches_kind =  kind == "Any" or kind_idx == database._SPELL_TYPES_STR.index(kind)
-                matches_rank = rank == -1 or spell_rank == rank
+            args = (
+                *chunk,
+                school, school_val,
+                kind, kind_val,
+                rank, rank
+            )
 
-                if matches_school and matches_kind and matches_rank:
-                    if return_row:
-                        filtered_spells.append(row)
-                    else:
-                        filtered_spells.append(row[-1])
-                    
-        return filtered_spells
+            async with self.bot.db.execute(query, args) as cursor:
+                rows = await cursor.fetchall()
+
+            if return_row:
+                results.extend(rows)
+            else:
+                results.extend(row[-1] for row in rows)
+
+        return results
     
     async def fetch_description(self, flag: int) -> List[tuple]:
         async with self.bot.db.execute(SPELL_DESCRIPTION_QUERY, (flag,)) as cursor:
@@ -376,12 +389,12 @@ class Spells(commands.GroupCog, name="spell"):
                     new_line += f"Devour"
             
             case database.SpellEffects.modify_incoming_armor_piercing:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.TRAP}"
                     else:
                         new_line += f"{param}% {school}{emojis.PIERCE}{emojis.WARD}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.AURA_NEGATIVE}"
                     else:
@@ -393,12 +406,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param}% {school}{emojis.PIERCE}"
             
             case database.SpellEffects.modify_incoming_damage:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.TRAP}"
                     else:
                         new_line += f"{param}% {school}{emojis.SHIELD}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.AURA_NEGATIVE}"
                     else:
@@ -410,12 +423,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param}% {school}{emojis.DAMAGE}"
             
             case database.SpellEffects.modify_incoming_damage_flat:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.TRAP}"
                     else:
                         new_line += f"{param} {school}{emojis.SHIELD}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.AURA_NEGATIVE}"
                     else:
@@ -427,12 +440,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param} {school}{emojis.FLAT_DAMAGE}"
             
             case database.SpellEffects.modify_incoming_damage_over_time:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.DOT}{emojis.JINX}"
                     else:
                         new_line += f"{param}% {school}{emojis.DOT}{emojis.WARD}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.DOT}{emojis.AURA_NEGATIVE}"
                     else:
@@ -446,12 +459,12 @@ class Spells(commands.GroupCog, name="spell"):
             case database.SpellEffects.modify_incoming_damage_type:
                 new_line += f"Convert {school} to {database.school_prism_values[param]} {emojis.JINX}"
             case database.SpellEffects.modify_incoming_heal:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HEART}{emojis.JINX}"
                     else:
                         new_line += f"{param}% {school}{emojis.HEART}{emojis.JINX}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HEART}{emojis.AURA}"
                     else:
@@ -475,12 +488,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param} {school}{emojis.HEART}{emojis.AURA_NEGATIVE}"
             
             case database.SpellEffects.modify_incoming_heal_over_time:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HOT}{emojis.JINX}"
                     else:
                         new_line += f"{param}% {school}{emojis.HOT}{emojis.JINX}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HOT}{emojis.AURA}"
                     else:
@@ -492,12 +505,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param}% {school}{emojis.HOT}"
             
             case database.SpellEffects.modify_outgoing_armor_piercing:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.CHARM}"
                     else:
                         new_line += f"{param}% {school}{emojis.PIERCE}{emojis.CURSE}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.PIERCE}{emojis.AURA}"
                     else:
@@ -509,12 +522,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param}% {school}{emojis.PIERCE}"
             
             case database.SpellEffects.modify_outgoing_damage:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.BLADE}"
                     else:
                         new_line += f"{param}% {school}{emojis.WEAKNESS}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.DAMAGE}{emojis.AURA}"
                     else:
@@ -526,12 +539,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param}% {school}{emojis.DAMAGE}"
             
             case database.SpellEffects.modify_outgoing_damage_flat:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.BLADE}"
                     else:
                         new_line += f"{param} {school}{emojis.WEAKNESS}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.DAMAGE}{emojis.AURA}"
                     else:
@@ -545,12 +558,12 @@ class Spells(commands.GroupCog, name="spell"):
             case database.SpellEffects.modify_outgoing_damage_type:
                 new_line += f"Convert {school} to {database.school_prism_values[param]} {emojis.CHARM}"
             case database.SpellEffects.modify_outgoing_heal:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HEART}{emojis.CHARM}"
                     else:
                         new_line += f"{param}% {school}{emojis.HEART}{emojis.CURSE}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param}% {school}{emojis.HEART}{emojis.AURA}"
                     else:
@@ -562,12 +575,12 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{param}% {school}{emojis.HEART}"
                         
             case database.SpellEffects.modify_outgoing_heal_flat:
-                if rounds == 0 and target != "kGlobal":
+                if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.HEART}{emojis.CHARM}"
                     else:
                         new_line += f"{param} {school}{emojis.HEART}{emojis.CURSE}"
-                elif target != "kGlobal":
+                elif target != database.EffectTarget.target_global:
                     if param >= 0:
                         new_line += f"+{param} {school}{emojis.HEART}{emojis.AURA}"
                     else:
@@ -796,7 +809,7 @@ class Spells(commands.GroupCog, name="spell"):
             case database.EffectTarget.multi_target_friendly:
                 new_line += f" {emojis.ALL_FRIENDS_SELECT}"
         
-        if effect_type != database.SpellEffects.invalid_spell_effect:
+        if effect_type != 0:
             return new_line
         else:
             return ""
@@ -807,18 +820,8 @@ class Spells(commands.GroupCog, name="spell"):
                 continue
             
             effect_id = effect[0]
-            spell_id = effect[1]
             effect_class = effect[4]
-            param = effect[5]
-            disposition = effect[6]
-            target = effect[7]
             effect_type = database.SpellEffects(effect[8])
-            heal_modifier = effect[9]
-            rounds = effect[10]
-            pip_num = effect[11]
-            protected = bool(effect[12])
-            rank = effect[13]
-            school = database.translate_school(effect[14])
             condition = effect[15]
 
             if effect_type != database.SpellEffects.invalid_spell_effect and effect_type != database.SpellEffects.shadow_self and effect_type != database.SpellEffects.convert_hanging_effect:
@@ -868,8 +871,7 @@ class Spells(commands.GroupCog, name="spell"):
         description = re.sub("<[^>]*>", "", description)
         description = re.sub(r"\{[^{}]*\}", "", description)
         description = re.sub(r"%%", "%", description)
-        #print(effects)
-        #print(description)
+
         for variable in re.findall(r"\$([\w:]+?)(\d*)\$", description):
             markdown_variable = variable[0]
             index = variable[1]
@@ -917,7 +919,7 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         description = description.replace(f'${actual}$', f"{effects[index][1]}")
 
-                case "Gambit" | "Clear" | "Remove" | "Steal" | "Swap" | "Take" | "Echo" | "Detonate" | "or" | ":" | "/" | "if":
+                case "Gambit" | "Clear" | "Remove" | "Steal" | "Swap" | "Take" | "Echo" | "Detonate" | "or" | ":" | "/" | "if" | "Push":
                     description = description = description.replace(f'${actual}$', f"{actual}")
 
                 case _:
@@ -966,7 +968,7 @@ class Spells(commands.GroupCog, name="spell"):
             parsed_description = self.replace_consecutive_duplicates(await self.generate_spell_effects_description(spell_effects))
             parsed_description = self.condense_conditionals(parsed_description).replace(" Caster", "").replace(" Target", "")
             #print(parsed_description)
-            print(len(parsed_description))
+            #print(len(parsed_description))
         else:
             effects = await self.fetch_spell_effects(spell_id)
 
@@ -1085,6 +1087,10 @@ class Spells(commands.GroupCog, name="spell"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
+        else:
+            logger.info("Failed to find '{}'", name)
+            embed = discord.Embed(description=f"No spells with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="list", description="Finds a list of spell names that contain the string")
     @app_commands.describe(name="The name of the spells to search for")
@@ -1106,7 +1112,7 @@ class Spells(commands.GroupCog, name="spell"):
         for spell in self.bot.spell_list:
             spell: str
 
-            if name.lower() in spell.lower():
+            if name == '*' or name.lower() in spell.lower():
                 spells_containing_name.append(spell)
 
         no_duplicate_spells = [*set(spells_containing_name)]

@@ -58,6 +58,16 @@ SELECT data FROM locale_en
 WHERE locale_en.id == ?
 """
 
+FIND_PETS_WITH_FILTER_QUERY = """
+SELECT * FROM pets
+INNER JOIN locale_en ON locale_en.id == pets.name
+WHERE locale_en.data COLLATE NOCASE IN ({placeholders})
+AND (? = 'Any' OR pets.school = ?)
+AND (? = -1 OR pets.wow_factor = ?)
+AND (? IS NULL OR pets.exclusive = ?)
+COLLATE NOCASE
+"""
+
 def remove_indices(lst, indices):
     return [value for index, value in enumerate(lst) if index not in indices]
 
@@ -83,31 +93,33 @@ class Pets(commands.GroupCog, name="pet"):
             return await cursor.fetchall()
         
     async def fetch_pets_with_filter(self, pets: List[str], school: Optional[str] = "Any", wow: Optional[int] = -1, exclusive: Optional[bool] = None, return_row=False):
-        filtered_pets = []
+        if isinstance(pets, str):
+            pets = [pets]
 
-        if type(pets) == str:
-            list_pet = []
-            list_pet.append(pets)
-            pets = list_pet
+        results = []
+        
+        school_val = (database._SCHOOLS_STR.index(school) + 2) if school != "Any" else None
 
-        for pet in pets:
-            rows = await self.fetch_pet(pet)
-            for row in rows:
-                school_idx = row[8] - 2
-                wow_idx = row[6]
-                exclusive_idx = bool(row[7])
+        for chunk in database.sql_chunked(pets, 900):  # Stay under SQLite's limit
+            placeholders = database._make_placeholders(len(chunk))
+            query = FIND_PETS_WITH_FILTER_QUERY.format(placeholders=placeholders)
 
-                matches_school = school == "Any" or school_idx == database._SCHOOLS_STR.index(school)
-                matches_kind =  wow == -1 or wow_idx == wow
-                matches_rank = exclusive == None or exclusive == exclusive_idx
+            args = (
+                *chunk,
+                school, school_val,
+                wow, wow,
+                exclusive, exclusive
+            )
 
-                if matches_school and matches_kind and matches_rank:
-                    if return_row:
-                        filtered_pets.append(row)
-                    else:
-                        filtered_pets.append(row[-1])
-                    
-        return filtered_pets
+            async with self.bot.db.execute(query, args) as cursor:
+                rows = await cursor.fetchall()
+
+            if return_row:
+                results.extend(rows)
+            else:
+                results.extend(row[-1] for row in rows)
+
+        return results
 
     
     async def fetch_pet_talents(self, id: str) -> List[tuple]:
@@ -251,6 +263,10 @@ class Pets(commands.GroupCog, name="pet"):
         if rows:
             view = ItemView([await self.build_pet_embed(row) for row in rows])
             await view.start(interaction)
+        else:
+            logger.info("Failed to find '{}'", name)
+            embed = discord.Embed(description=f"No pets with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="list", description="Finds a list of pet names that contain the string")
     @app_commands.describe(name="The name of the pets to search for")
@@ -272,7 +288,7 @@ class Pets(commands.GroupCog, name="pet"):
         for pet in self.bot.pet_list:
             pet: str
 
-            if name.lower() in pet.lower():
+            if name == '*' or name.lower() in pet.lower():
                 pets_containing_name.append(pet)
 
         no_duplicate_pets = [*set(pets_containing_name)]

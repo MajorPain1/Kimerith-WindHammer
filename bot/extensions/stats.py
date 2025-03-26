@@ -46,6 +46,16 @@ INNER JOIN locale_en ON locale_en.id == spells.name
 WHERE spells.template_id == ?
 """
 
+FIND_ITEMS_WITH_FILTER_QUERY = """
+SELECT * FROM items
+INNER JOIN locale_en ON locale_en.id == items.name
+WHERE locale_en.data COLLATE NOCASE IN ({placeholders})
+AND (? = 'Any' OR items.equip_school = ?)
+AND (? = 'Any' OR items.kind = ?)
+AND (? = -1 OR items.equip_level = ?)
+COLLATE NOCASE
+"""
+
 
 class Stats(commands.GroupCog, name="item"):
     def __init__(self, bot: TheBot):
@@ -70,31 +80,34 @@ class Stats(commands.GroupCog, name="item"):
 
 
     async def fetch_items_with_filter(self, items, school: Optional[str] = "Any", kind: Optional[str] = "Any", level: Optional[int] = -1, return_row=False):
-        filtered_items = []
+        if isinstance(items, str):
+            items = [items]
 
-        if type(items) == str:
-            list_item = []
-            list_item.append(items)
-            items = list_item
+        results = []
+        
+        school_val = (database._SCHOOLS_STR.index(school) + 2) if school != "Any" else None
+        kind_val = (1 << database._ITEMS_STR.index(kind)) if kind != "Any" else None
 
-        for item in items:
-            rows = await self.fetch_item(item)
-            for row in rows:
-                school_idx = row[8] - 2
-                kind_idx = row[6].bit_length() - 1
-                equip_lvl = row[9]
+        for chunk in database.sql_chunked(items, 900):  # Stay under SQLite's limit
+            placeholders = database._make_placeholders(len(chunk))
+            query = FIND_ITEMS_WITH_FILTER_QUERY.format(placeholders=placeholders)
 
-                matches_school = school == "Any" or school_idx == database._SCHOOLS_STR.index(school)
-                matches_kind =  kind == "Any" or kind_idx == database._ITEMS_STR.index(kind)
-                matches_level = level == -1 or equip_lvl == level
+            args = (
+                *chunk,
+                school, school_val,
+                kind, kind_val,
+                level, level
+            )
 
-                if matches_school and matches_kind and matches_level:
-                    if return_row:
-                        filtered_items.append(row)
-                    else:
-                        filtered_items.append(row[-1])
+            async with self.bot.db.execute(query, args) as cursor:
+                rows = await cursor.fetchall()
 
-        return filtered_items
+            if return_row:
+                results.extend(rows)
+            else:
+                results.extend(row[-1] for row in rows)
+
+        return results
 
 
     async def fetch_item_stats(self, item: int) -> List[str]:
@@ -253,6 +266,10 @@ class Stats(commands.GroupCog, name="item"):
         if rows:
             view = ItemView([await self.build_item_embed(row) for row in rows])
             await view.start(interaction)
+        else:
+            logger.info("Failed to find '{}'", name)
+            embed = discord.Embed(description=f"No items with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="list", description="Finds a list of item names that contain the string")
     @app_commands.describe(name="The name of the items to search for")
@@ -274,7 +291,7 @@ class Stats(commands.GroupCog, name="item"):
         for item in self.bot.item_list:
             item: str
 
-            if name.lower() in item.lower():
+            if name == '*' or name.lower() in item.lower():
                 items_containing_name.append(item)
 
         if len(items_containing_name) > 0:
