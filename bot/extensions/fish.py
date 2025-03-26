@@ -135,16 +135,14 @@ class Fish(commands.GroupCog, name="fish"):
         else:
             rows = await self.fetch_fish_with_filter(name, school, rank, is_sentinel, return_row=True)
             if not rows:
-                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.fish_list]
-                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
-                closest_names = list(zip(*closest_names))[0]
+                filtered_rows = await self.fetch_fish_with_filter(self.bot.fish_list, school, rank, is_sentinel, return_row=True)
+                closest_rows = [(row, fuzz.token_set_ratio(name, row[-1]) + fuzz.ratio(name, row[-1])) for row in filtered_rows]
+                closest_rows = sorted(closest_rows, key=lambda x: x[1], reverse=True)
+                closest_rows = list(zip(*closest_rows))[0]
                 
-                for fish in closest_names:
-                    rows = await self.fetch_fish_with_filter(fish, school, rank, is_sentinel, return_row=True)
-
-                    if rows:
-                        logger.info("Failed to find '{}' instead searching for {}", name, fish)
-                        break
+                rows = await self.fetch_fish_with_filter(closest_rows[0][-1], school, rank, is_sentinel, return_row=True)
+                if rows:
+                    logger.info("Failed to find '{}' instead searching for {}", name, closest_rows[0][-1])
 
         if rows:
             view = ItemView([await self.build_fish_embed(row) for row in rows])

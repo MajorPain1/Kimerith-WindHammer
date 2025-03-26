@@ -80,7 +80,7 @@ class Spells(commands.GroupCog, name="spell"):
         results = []
         
         school_val = (database._SCHOOLS_STR.index(school) + 2) if school != "Any" else None
-        kind_val = database._SPELL_TYPES.index(kind) if kind != "Any" else None
+        kind_val = database._SPELL_TYPES_STR.index(kind) if kind != "Any" else None
 
         for chunk in database.sql_chunked(spells, 900):  # Stay under SQLite's limit
             placeholders = database._make_placeholders(len(chunk))
@@ -1070,16 +1070,15 @@ class Spells(commands.GroupCog, name="spell"):
         else:
             rows = await self.fetch_spells_with_filter(name, school, kind, rank, return_row=True)
             if not rows:
-                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.spell_list]
-                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
-                closest_names = list(zip(*closest_names))[0]
+                filtered_rows = await self.fetch_spells_with_filter(self.bot.spell_list, school, kind, rank, return_row=True)
+                closest_rows = [(row, fuzz.token_set_ratio(name, row[-1]) + fuzz.ratio(name, row[-1])) for row in filtered_rows]
+                closest_rows = sorted(closest_rows, key=lambda x: x[1], reverse=True)
+                closest_rows = list(zip(*closest_rows))[0]
                 
-                for spell in closest_names:
-                    rows = await self.fetch_spells_with_filter(spell, school, kind, rank, return_row=True)
+                rows = await self.fetch_spells_with_filter(closest_rows[0][-1], school, kind, rank, return_row=True)
 
-                    if rows:
-                        logger.info("Failed to find '{}' instead searching for {}", name, spell)
-                        break
+                if rows:
+                    logger.info("Failed to find '{}' instead searching for {}", name, closest_rows[0][-1])
 
         if rows:
             embeds = [await self.build_spell_embed(row, show_spell_effects=show_spell_effects) for row in rows]

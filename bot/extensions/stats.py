@@ -252,22 +252,19 @@ class Stats(commands.GroupCog, name="item"):
         else:
             rows = await self.fetch_items_with_filter(items=name, school=school, kind=kind, level=level, return_row=True)
             if not rows:
-                closest_names = [(string, fuzz.token_set_ratio(name, string) + fuzz.ratio(name, string)) for string in self.bot.item_list]
-                closest_names = sorted(closest_names, key=lambda x: x[1], reverse=True)
-                closest_names = list(zip(*closest_names))[0]
+                filtered_rows = await self.fetch_items_with_filter(items=self.bot.item_list, school=school, kind=kind, level=level, return_row=True)
+                closest_rows = [(row, fuzz.token_set_ratio(name, row[-1]) + fuzz.ratio(name, row[-1])) for row in filtered_rows]
+                closest_rows = sorted(closest_rows, key=lambda x: x[1], reverse=True)
+                closest_rows = list(zip(*closest_rows))[0]
                 
-                for item in closest_names:
-                    rows = await self.fetch_items_with_filter(items=item, school=school, kind=kind, level=level, return_row=True)
-
-                    if rows:
-                        logger.info("Failed to find '{}' instead searching for {}", name, item)
-                        break
+                rows = await self.fetch_items_with_filter(items=closest_rows[0][-1], school=school, kind=kind, level=level, return_row=True)
+                if rows:
+                    logger.info("Failed to find '{}' instead searching for {}", name, closest_rows[0][-1])
         
         if rows:
             view = ItemView([await self.build_item_embed(row) for row in rows])
             await view.start(interaction)
         else:
-            logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No items with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
 
