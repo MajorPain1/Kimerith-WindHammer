@@ -261,7 +261,7 @@ class Pets(commands.GroupCog, name="pet"):
         if rows:
             view = ItemView([await self.build_pet_embed(row) for row in rows])
             await view.start(interaction)
-        else:
+        elif not use_object_name:
             logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No pets with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)

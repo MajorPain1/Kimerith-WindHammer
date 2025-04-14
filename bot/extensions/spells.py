@@ -81,7 +81,6 @@ class Spells(commands.GroupCog, name="spell"):
         
         school_val = (database._SCHOOLS_STR.index(school) + 2) if school != "Any" else None
         kind_val = database._SPELL_TYPES_STR.index(kind) if kind != "Any" else None
-
         for chunk in database.sql_chunked(spells, 900):  # Stay under SQLite's limit
             placeholders = database._make_placeholders(len(chunk))
             query = FIND_SPELLS_WITH_FILTER_QUERY.format(placeholders=placeholders)
@@ -129,7 +128,7 @@ class Spells(commands.GroupCog, name="spell"):
         res = sorted(res, key=lambda effect: effect[1])
         return res
     
-    def replace_condition_with_emojis(self, string):
+    def replace_condition_with_emojis(self, string, use_blade_trap=False):
         target_full_pattern = r"(?i)\bnot Target School (Death|Fire|Ice|Life|Myth|Storm)\b" \
                     r"(?: and not Target School (?!\1)(Death|Fire|Ice|Life|Myth|Storm))" \
                     r"(?: and not Target School (?!\1|\2)(Death|Fire|Ice|Life|Myth|Storm))" \
@@ -145,7 +144,13 @@ class Spells(commands.GroupCog, name="spell"):
                     r"(?: and not Caster School (?!\1|\2|\3|\4|\5)(Death|Fire|Ice|Life|Myth|Storm))"
         string = re.sub(caster_full_pattern, f"{emojis.BALANCE}", string)
         string = string.replace(" School Fire", f" {emojis.FIRE}").replace(" School Storm", f" {emojis.STORM}").replace(" School Ice", f" {emojis.ICE}").replace(" School Myth", f" {emojis.MYTH}").replace(" School Life", f" {emojis.LIFE}").replace(" School Death", f" {emojis.DEATH}").replace(" School Balance", f" {emojis.BALANCE}")
-        string = string.replace(" Blade", f" {emojis.CHARM}").replace(" Shield", f" {emojis.WARD}").replace(" Weakness", f" {emojis.CURSE}").replace(" Trap", f" {emojis.JINX}").replace(" DOT", f" {emojis.DOT}").replace(" HOT", f" {emojis.HOT}").replace(" Negative Aura", f" {emojis.AURA_NEGATIVE}").replace(" Aura", f" {emojis.AURA}")
+        string = string.replace(" Shield", f" {emojis.WARD}").replace(" Weakness", f" {emojis.CURSE}").replace(" DOT", f" {emojis.DOT}").replace(" HOT", f" {emojis.HOT}").replace(" Negative Aura", f" {emojis.AURA_NEGATIVE}").replace(" Aura", f" {emojis.AURA}")
+        
+        if not use_blade_trap:
+            string = string.replace(" Blade", f" {emojis.CHARM}").replace(" Trap", f" {emojis.JINX}")
+        else:
+            string = string.replace(" Blade", f" {emojis.BLADE}").replace(" Trap", f" {emojis.TRAP}")
+            
         string = string.replace(" DamageOverTime", f" {emojis.DOT}").replace(" HealOverTime", f" {emojis.HOT}")
         string = string.replace(" Charm", f" {emojis.CHARM}/{emojis.CURSE}").replace(" Ward", f" {emojis.WARD}/{emojis.JINX}").replace(" OT", f" {emojis.DOT}/{emojis.HOT}")
         return string.replace(" on", "").replace(" has", "")
@@ -180,11 +185,10 @@ class Spells(commands.GroupCog, name="spell"):
     def remove_index_from_string(self, text, index):
         return text[:index] + "@" + text[index+1:]
     
-    def condense_conditionals(self, text): # CHROMATIC CONDENSER!
+    def condense_conditionals(self, text):
         sections = text.split("\n\n")
-        if len(sections) <= 10:
-            return text
         
+        # CHROMATIC CONDENSER!
         conditionals = {}
         
         for section in sections:
@@ -198,23 +202,27 @@ class Spells(commands.GroupCog, name="spell"):
                 conditionals[raw_string] = conditionals[raw_string]+1
             else:
                 conditionals[raw_string] = 1
-            
-        indices_to_remove = []
-        for key, value in conditionals.items():
-            if value >= 6:
-                for i, section in enumerate(sections):
-                    raw_string = section.replace(f"{emojis.DEATH}", "@").replace(f"{emojis.FIRE}", "@").replace(f"{emojis.ICE}", "@").replace(f"{emojis.LIFE}", "@").replace(f"{emojis.MYTH}", "@").replace(f"{emojis.STORM}", "@")
-                    if key == raw_string:
-                        indices_to_remove.append(i)
-                        sections[i] = raw_string
         
-        indices_to_keep = [indices_to_remove[i] for i in range(len(indices_to_remove)) if i == 0 or indices_to_remove[i] != indices_to_remove[i - 1] + 1]
-        indices_to_remove = [num for num in indices_to_remove if num not in indices_to_keep]
+        indices_to_remove = []
+        keys_seen = []
+        for i, section in enumerate(sections):
+            raw_string = section.replace(f"{emojis.DEATH}", "@").replace(f"{emojis.FIRE}", "@").replace(f"{emojis.ICE}", "@").replace(f"{emojis.LIFE}", "@").replace(f"{emojis.MYTH}", "@").replace(f"{emojis.STORM}", "@").lstrip("\n")
+            if conditionals[raw_string] >= 6:
+                if raw_string in keys_seen:
+                    indices_to_remove.append(i)
+                else:
+                    keys_seen = raw_string
+                    sections[i] = raw_string
+
         result = [value for idx, value in enumerate(sections) if idx not in indices_to_remove]
 
         reconstruct = []
         for section in result:
-            reconstruct.append(section.replace("Target @", f"{emojis.CHROMATIC_TARGET}").replace("Caster @", f"{emojis.CHROMATIC_CASTER}").replace("@", f"{emojis.CHROMATIC_TARGET}"))
+            if "Target @" in section:
+                section = section.replace("Target @", f"{emojis.ELEMENTAL}/{emojis.SPIRIT}").replace("@", f"{emojis.CHROMATIC_TARGET}")
+            if "Caster @" in section:
+                section = section.replace("Caster @", f"{emojis.ELEMENTAL}/{emojis.SPIRIT}").replace("@", f"{emojis.CHROMATIC_CASTER}")
+            reconstruct.append(section.replace(" Caster", "").replace(" Target", "").replace("@", f"{emojis.CHROMATIC_TARGET}"))
         
         return "\n\n".join(reconstruct)
     
@@ -234,7 +242,7 @@ class Spells(commands.GroupCog, name="spell"):
         school = database.translate_school(effect[14])
         condition = effect[15]
         
-        new_line = ""
+        new_line: str = ""
         
         if parent_is_x_pip:
             new_line += f"{rank} {emojis.PIP}: "
@@ -786,6 +794,35 @@ class Spells(commands.GroupCog, name="spell"):
         ]
         if rounds > 0 and not effect_type in no_round_list:
             new_line += f" {rounds}{emojis.ROUNDS}"
+            
+        remove_all_list = [
+            database.SpellEffects.push_charm,
+            database.SpellEffects.push_converted_charm,
+            database.SpellEffects.push_converted_over_time,
+            database.SpellEffects.push_converted_ward,
+            database.SpellEffects.push_over_time,
+            database.SpellEffects.push_ward,
+            database.SpellEffects.remove_aura,
+            database.SpellEffects.remove_charm,
+            database.SpellEffects.remove_converted_charm,
+            database.SpellEffects.remove_converted_over_time,
+            database.SpellEffects.remove_converted_ward,
+            database.SpellEffects.remove_over_time,
+            database.SpellEffects.remove_stun_block,
+            database.SpellEffects.remove_ward,
+            database.SpellEffects.steal_charm,
+            database.SpellEffects.steal_converted_charm,
+            database.SpellEffects.steal_converted_over_time,
+            database.SpellEffects.steal_converted_ward,
+            database.SpellEffects.steal_ward,
+            database.SpellEffects.steal_over_time
+        ]    
+        if param == -1 and effect_type in remove_all_list:
+            new_line = new_line.replace("-1", "all")
+            
+        if parent_is_convert and rank == 0:
+            new_line = new_line.replace("+", "1: ")
+            new_line = new_line.replace("% ", f"% of effect to ")
         
         match target:
             case database.EffectTarget.enemy_team_all_at_once | database.EffectTarget.enemy_team:
@@ -829,37 +866,32 @@ class Spells(commands.GroupCog, name="spell"):
                 effect_string.append(f"{new_line}\n")
             
             match effect_class:
-                case 0 | 3 | 5:
-                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=False, parent_is_convert=False, parent_id=effect_id)
+                case 0:
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_id=effect_id)
+                
+                case 3 | 5:
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level, parent_id=effect_id)
                 
                 case 1:
-                    if parent_id == -1:
-                        effect_string.append("\n")
-                    effect_string.append(f"Random:\n")
-                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=False, parent_is_convert=False, parent_id=effect_id)
+                    effect_string.append(f"\nRandom:\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_id=effect_id)
                     effect_string.append("\n")
                 
                 case 2:
-                    if parent_id == -1:
-                        effect_string.append("\n")
-                    effect_string.append(f"Variable:\n")
-                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=True, parent_is_convert=False, parent_id=effect_id)
+                    effect_string.append(f"\nVariable:\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=True, parent_id=effect_id)
                     effect_string.append("\n")
-                
+                    
                 case 4:
-                    if parent_id == -1:
-                        effect_string.append("\n")
-                    effect_string.append(f"{self.replace_condition_with_emojis(condition)}:\n")
-                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=False, parent_is_convert=False, parent_id=effect_id)
+                    effect_string.append(f"\n{self.replace_condition_with_emojis(condition)}:\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_id=effect_id)
                     effect_string.append("\n")
-                
+                    
                 case 6:
-                    if parent_id == -1:
-                        effect_string.append("\n")
-                    effect_string.append(f"{self.replace_condition_with_emojis(condition)}:\n")
-                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_x_pip=False, parent_is_convert=True, parent_id=effect_id)
+                    effect_string.append(f"\n{self.replace_condition_with_emojis(condition, use_blade_trap=True)}:\n")
+                    await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_is_convert=True, parent_id=effect_id)
                     effect_string.append("\n")
-
+                    
 
     async def generate_spell_effects_description(self, spell_effects):
         ret_list = []
@@ -965,8 +997,9 @@ class Spells(commands.GroupCog, name="spell"):
         parsed_description = ""
         if show_spell_effects:
             spell_effects = await self.fetch_real_spell_effects(spell_id)
-            parsed_description = self.replace_consecutive_duplicates(await self.generate_spell_effects_description(spell_effects))
-            parsed_description = self.condense_conditionals(parsed_description).replace(" Caster", "").replace(" Target", "")
+            parsed_description = self.condense_conditionals(await self.generate_spell_effects_description(spell_effects)).replace(" Caster", "").replace(" Target", "").replace("\n\n\n", "\n\n")
+            parsed_description = self.replace_consecutive_duplicates(parsed_description)
+            
             #print(parsed_description)
             #print(len(parsed_description))
         else:
@@ -1086,7 +1119,7 @@ class Spells(commands.GroupCog, name="spell"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
-        else:
+        elif not use_object_name:
             logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No spells with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)

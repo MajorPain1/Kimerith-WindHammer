@@ -868,9 +868,10 @@ class Buff:
         return f"{self.value=} {self.modifier=} {self.is_pierce=}"
 
 def translate_buffs(buffs: str):
+    buffs = buffs.replace("%", "")
     if buffs == "": return []
     
-    buff_list = buffs.replace("%", "").split(" ")
+    buff_list = buffs.split(" ")
     buffs_as_modifier = []
     for buff in buff_list:
         try:

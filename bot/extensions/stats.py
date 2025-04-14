@@ -264,7 +264,7 @@ class Stats(commands.GroupCog, name="item"):
         if rows:
             view = ItemView([await self.build_item_embed(row) for row in rows])
             await view.start(interaction)
-        else:
+        elif not use_object_name:
             embed = discord.Embed(description=f"No items with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
 
