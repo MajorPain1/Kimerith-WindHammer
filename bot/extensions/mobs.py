@@ -3,7 +3,7 @@ from fuzzywuzzy import process, fuzz
 from operator import itemgetter
 
 import discord
-from discord import app_commands, PartialMessageable
+from discord import app_commands, PartialMessageable, DMChannel
 from discord.ext import commands
 from loguru import logger
 
@@ -348,7 +348,7 @@ class Mobs(commands.GroupCog, name="mob"):
         use_object_name: Optional[bool] = False,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested mob '{}'", interaction.user.name, name)
         else:
             logger.info("{} requested mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
@@ -393,7 +393,7 @@ class Mobs(commands.GroupCog, name="mob"):
         use_object_name: Optional[bool] = False,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested mob deck '{}'", interaction.user.name, name)
         else:
             logger.info("{} requested mob deck '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
@@ -437,7 +437,7 @@ class Mobs(commands.GroupCog, name="mob"):
         rank: Optional[int] = -1,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} searched for mobs that contain '{}'", interaction.user.name, name)
         else:
             logger.info("{} searched for mobs that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
@@ -489,7 +489,7 @@ class Mobs(commands.GroupCog, name="mob"):
         pvp: Optional[bool] = True,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested calc on mob '{}'", interaction.user.name, name)
         else:
             logger.info("{} requested calc on mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)

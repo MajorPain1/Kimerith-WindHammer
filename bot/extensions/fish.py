@@ -5,7 +5,7 @@ import re
 from random import choice
 
 import discord
-from discord import app_commands, PartialMessageable
+from discord import app_commands, PartialMessageable, DMChannel
 from discord.ext import commands
 from loguru import logger
 
@@ -121,7 +121,7 @@ class Fish(commands.GroupCog, name="fish"):
         use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested fish '{}'", interaction.user.name, name)
         else:
             logger.info("{} requested fish '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
@@ -163,7 +163,7 @@ class Fish(commands.GroupCog, name="fish"):
         is_sentinel: Optional[bool] = None,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} searched for fish that contain '{}'", interaction.user.name, name)
         else:
             logger.info("{} searched for fish that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)

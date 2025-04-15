@@ -5,7 +5,7 @@ import re
 from random import choice
 
 import discord
-from discord import app_commands, PartialMessageable
+from discord import app_commands, PartialMessageable, DMChannel
 from discord.ext import commands
 from loguru import logger
 
@@ -235,7 +235,7 @@ class Pets(commands.GroupCog, name="pet"):
         use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested pet '{}'", interaction.user.name, name)
         else:
             logger.info("{} requested pet '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
@@ -277,7 +277,7 @@ class Pets(commands.GroupCog, name="pet"):
         exclusive: Optional[bool] = None,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} searched for pets that contain '{}'", interaction.user.name, name)
         else:
             logger.info("{} searched for pets that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)

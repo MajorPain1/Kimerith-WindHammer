@@ -1,5 +1,5 @@
 import discord
-from discord import app_commands, PartialMessageable
+from discord import app_commands, PartialMessageable, DMChannel
 from discord.ext import commands
 from loguru import logger
 from typing import List, Optional, Literal
@@ -26,7 +26,7 @@ class Calc(commands.Cog):
     ):
         await interaction.response.defer()
         
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested calc", interaction.user.name)
         else:
             logger.info("{} requested calc in channel #{} of {}", interaction.user.name, interaction.channel.name, interaction.guild.name)

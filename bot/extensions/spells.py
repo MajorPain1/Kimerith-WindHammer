@@ -4,7 +4,7 @@ from operator import attrgetter
 import re
 
 import discord
-from discord import app_commands, PartialMessageable
+from discord import app_commands, DMChannel, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
@@ -1089,7 +1089,7 @@ class Spells(commands.GroupCog, name="spell"):
         show_spell_effects: Optional[bool] = False
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested spell '{}'", interaction.user.name, name)
         else:
             logger.info("{} requested spell '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
@@ -1135,7 +1135,7 @@ class Spells(commands.GroupCog, name="spell"):
         rank: Optional[int] = -1,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} searched for spells that contain '{}'", interaction.user.name, name)
         else:
             logger.info("{} searched for spells that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)

@@ -4,7 +4,7 @@ from operator import itemgetter
 from random import choice
 
 import discord
-from discord import app_commands, PartialMessageable
+from discord import app_commands, DMChannel, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
@@ -203,7 +203,7 @@ class StatCaps(commands.GroupCog, name="statcaps"):
         level = int(level/10)*10
         await interaction.response.defer()
         
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested stat caps for '{}' '{}'", interaction.user.name, level, school)
         else:
             logger.info("{} requested stat caps for '{}' '{}' in channel #{} of {}", interaction.user.name, level, school, interaction.channel.name, interaction.guild.name)

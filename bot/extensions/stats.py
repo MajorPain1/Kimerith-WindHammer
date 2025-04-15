@@ -4,7 +4,7 @@ from operator import itemgetter
 from random import choice
 
 import discord
-from discord import app_commands, PartialMessageable
+from discord import app_commands, DMChannel, PartialMessageable
 from discord.ext import commands
 from loguru import logger
 
@@ -239,7 +239,7 @@ class Stats(commands.GroupCog, name="item"):
         use_object_name: Optional[bool] = False
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} requested item '{}'", interaction.user.name, name)
         else:
             logger.info("{} requested item '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
@@ -279,7 +279,7 @@ class Stats(commands.GroupCog, name="item"):
         level: Optional[int] = -1,
     ):
         await interaction.response.defer()
-        if type(interaction.channel) is PartialMessageable:
+        if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
             logger.info("{} searched for items that contain '{}'", interaction.user.name, name)
         else:
             logger.info("{} searched for items that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
