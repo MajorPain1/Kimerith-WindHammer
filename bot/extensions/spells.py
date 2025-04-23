@@ -815,7 +815,8 @@ class Spells(commands.GroupCog, name="spell"):
             database.SpellEffects.steal_converted_over_time,
             database.SpellEffects.steal_converted_ward,
             database.SpellEffects.steal_ward,
-            database.SpellEffects.steal_over_time
+            database.SpellEffects.steal_over_time,
+            database.SpellEffects.detonate_over_time,
         ]    
         if param == -1 and effect_type in remove_all_list:
             new_line = new_line.replace("-1", "all")
