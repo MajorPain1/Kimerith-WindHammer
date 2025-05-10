@@ -2,6 +2,7 @@ from typing import List, Optional, Literal
 from fuzzywuzzy import process, fuzz
 from operator import attrgetter
 import re
+import os
 
 import discord
 from discord import app_commands, DMChannel, PartialMessageable
@@ -1069,7 +1070,8 @@ class Spells(commands.GroupCog, name="spell"):
                 image_name = (image_file.split("|")[-1]).split(".")[0]
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
-                discord_file = discord.File(f"PNG_Images/{png_file}", filename=png_name)
+                file_path = os.path.join("PNG_Images", png_name)
+                discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
                 pass

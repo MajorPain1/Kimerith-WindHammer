@@ -1,6 +1,7 @@
 from typing import List, Optional, Literal
 from fuzzywuzzy import process, fuzz
 from operator import itemgetter
+import os
 
 import discord
 from discord import app_commands, PartialMessageable, DMChannel
@@ -224,7 +225,8 @@ class Mobs(commands.GroupCog, name="mob"):
                 image_name = (image_file.split("|")[-1]).split(".")[0]
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
-                discord_file = discord.File(f"PNG_Images/{png_name}", filename=png_name)
+                file_path = os.path.join("PNG_Images", png_name)
+                discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
                 pass
@@ -275,7 +277,8 @@ class Mobs(commands.GroupCog, name="mob"):
                 image_name = (image_file.split("|")[-1]).split(".")[0]
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
-                discord_file = discord.File(f"PNG_Images/{png_name}", filename=png_name)
+                file_path = os.path.join("PNG_Images", png_name)
+                discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
                 pass
@@ -328,7 +331,8 @@ class Mobs(commands.GroupCog, name="mob"):
                 image_name = (image_file.split("|")[-1]).split(".")[0]
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
-                discord_file = discord.File(f"PNG_Images/{png_name}", filename=png_name)
+                file_path = os.path.join("PNG_Images", png_name)
+                discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
                 pass
