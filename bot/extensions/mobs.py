@@ -2,6 +2,7 @@ from typing import List, Optional, Literal
 from fuzzywuzzy import process, fuzz
 from operator import itemgetter
 import os
+from pathlib import Path
 
 import discord
 from discord import app_commands, PartialMessageable, DMChannel
@@ -226,7 +227,7 @@ class Mobs(commands.GroupCog, name="mob"):
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
                 png_name = os.path.basename(png_name)
-                file_path = os.path.join("PNG_Images", png_name)
+                file_path = Path("PNG_Images") / png_name
                 discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
@@ -279,7 +280,7 @@ class Mobs(commands.GroupCog, name="mob"):
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
                 png_name = os.path.basename(png_name)
-                file_path = os.path.join("PNG_Images", png_name)
+                file_path = Path("PNG_Images") / png_name
                 discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
@@ -334,7 +335,7 @@ class Mobs(commands.GroupCog, name="mob"):
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
                 png_name = os.path.basename(png_name)
-                file_path = os.path.join("PNG_Images", png_name)
+                file_path = Path("PNG_Images") / png_name
                 discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:

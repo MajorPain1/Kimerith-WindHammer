@@ -3,6 +3,7 @@ from fuzzywuzzy import process, fuzz
 from operator import attrgetter
 import re
 import os
+from pathlib import Path
 
 import discord
 from discord import app_commands, DMChannel, PartialMessageable
@@ -1071,7 +1072,8 @@ class Spells(commands.GroupCog, name="spell"):
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
                 png_name = os.path.basename(png_name)
-                file_path = os.path.join("PNG_Images", png_name)
+                file_path = Path("PNG_Images") / png_name
+                print(f"file_path = {file_path!r}")
                 discord_file = discord.File(file_path, filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
