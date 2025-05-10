@@ -1069,7 +1069,7 @@ class Spells(commands.GroupCog, name="spell"):
                 image_name = (image_file.split("|")[-1]).split(".")[0]
                 png_file = f"{image_name}.png"
                 png_name = png_file.replace(" ", "")
-                discord_file = discord.File(f"PNG_Images\\{png_file}", filename=png_name)
+                discord_file = discord.File(f"PNG_Images/{png_file}", filename=png_name)
                 embed.set_thumbnail(url=f"attachment://{png_name}")
             except:
                 pass
