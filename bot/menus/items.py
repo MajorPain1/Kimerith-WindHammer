@@ -1,4 +1,5 @@
 from typing import List
+from pathlib import Path
 
 import discord
 from discord import ui
@@ -43,7 +44,8 @@ class ItemView(ui.View):
         file = self.files[self.current_page - 1]
         if file:
             file_name = file.filename.replace(" ", "")
-            self.files[self.current_page - 1] = discord.File(f"PNG_Images\\{file_name}", filename=file.filename)
+            file_path = Path("PNG_Images") / file_name
+            self.files[self.current_page - 1] = discord.File(file_path, filename=file.filename)
         else:
             self.files[self.current_page - 1] = None
 
