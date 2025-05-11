@@ -315,7 +315,11 @@ class Mobs(commands.GroupCog, name="mob"):
                 mob_block += stat.value
         
         mob_buff = sum(mob_buffs)
-        buffs_as_modifiers.append(database.Buff(float(-mob_buff), True))
+        if mob_buff < 0:
+            buffs_as_modifiers.append(database.Buff(float(-mob_buff), False))
+        elif mob_buff > 0:
+            buffs_as_modifiers.append(database.Buff(float(-mob_buff), True))
+            
         no_crit, crit = database.calc_damage(base, damage, pierce, critical, buffs_as_modifiers, mob_block, pvp)
         
         embed = (
