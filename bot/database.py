@@ -2,6 +2,7 @@ from enum import IntFlag, Enum
 from struct import unpack
 from typing import Tuple, List
 from dataclasses import dataclass
+import math
 
 import discord
 
@@ -894,8 +895,24 @@ def crit_multiplier(crit, block, pvp=True):
     if pvp: return 2 - ((5*block) / (crit + (5*block)))
     return 2 - ((3*block) / (crit + (3*block)))
 
+def pve_damage_curve(damage: int):
+    float_dmg = float(damage) / 100
+    
+    l = 2.47 # Limit
+    k0 = 237 # Start of curve
+    n0 = 0 # Basically depricated
+    l100 = l * 100
+    k0n0 = k0 + n0
+    k = math.log(l100 / (l100 - k0)) / k0
+    n = math.log(1 - (k0n0 / l100)) + (k * k0n0)
+    
+    if float_dmg > (k0n0 / 100):
+        return 1 + (l - (l * math.exp((-100 * k * float_dmg) + n)))
+    
+    return 1 + float_dmg
+
 def calc_damage(base, damage: int, pierce: int, critical: int, buffs: List[Buff], mob_block: int, pvp: bool):
-    ret = int(base * ((float(damage) / 100) + 1))
+    ret = int(base * pve_damage_curve(damage))
     
     if buffs != []:
         for buff in buffs:

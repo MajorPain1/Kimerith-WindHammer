@@ -321,11 +321,13 @@ class Mobs(commands.GroupCog, name="mob"):
             buffs_as_modifiers.append(database.Buff(float(-mob_buff), True))
             
         no_crit, crit = database.calc_damage(base, damage, pierce, critical, buffs_as_modifiers, mob_block, pvp)
-        
+        curved_damage = round((database.pve_damage_curve(damage) * 100) - 100, 2)
+        curved_str = f" ({curved_damage}% {school_emoji}{database.DAMAGE})"
+        show_curved = int(float(damage) != curved_damage)
         embed = (
             discord.Embed(
                 color=database.make_school_color(mob_school),
-                description=f"{base}{database.DAMAGE} Base\n\nStats:\n{damage}% {school_emoji}{database.DAMAGE}\n{pierce}% {school_emoji}{database.PIERCE}\n{critical} {school_emoji}{database.CRIT}\n{mob_buff}% {school_emoji}{database.RESIST}\n{mob_block} {school_emoji}{database.BLOCK}\n\nBuffs: {buffs}"
+                description=f"{base}{database.DAMAGE} Base\n\nStats:\n{damage}% {school_emoji}{database.DAMAGE}{curved_str*show_curved}\n{pierce}% {school_emoji}{database.PIERCE}\n{critical} {school_emoji}{database.CRIT}\n{mob_buff}% {school_emoji}{database.RESIST}\n{mob_block} {school_emoji}{database.BLOCK}\n\nBuffs: {buffs}"
             )
             .set_author(name=f"Damage Calc on {mob_name}\n({real_name}: {mob_id})\nHP {hp}", icon_url=database.translate_school(mob_school).url)
             .add_field(name="No Crit Damage", value=f"{no_crit:,}{database.DAMAGE}")
@@ -486,7 +488,7 @@ class Mobs(commands.GroupCog, name="mob"):
             await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="calc", description="Calcs damage against a specific mob")
-    @app_commands.describe(name="The name of the mobs to search for", buffs="Your buffs separated by a space (use a \"P\" prefix to denote pierce) EX: 35 35 40 20P -50P")
+    @app_commands.describe(name="The name of the mobs to search for", buffs="Your buffs separated by a space (use a \"P\" prefix to denote pierce) EX: 35 35 40 20P -50P", damage="Input your pre-curved damage if you are in PvE")
     async def calc(
         self,
         interaction: discord.Interaction,

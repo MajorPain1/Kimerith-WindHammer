@@ -11,7 +11,7 @@ class Calc(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="calc", description="Simple Calculation of Damage")
-    @app_commands.describe(buffs="Your buffs separated by a space (use a \"P\" prefix to denote pierce) EX: 35 35 40 20P -50P")
+    @app_commands.describe(buffs="Your buffs separated by a space (use a \"P\" prefix to denote pierce) EX: 35 35 40 20P -50P", damage="Input your pre-curved damage if you are in PvE")
     async def find(
         self, 
         interaction: discord.Interaction,
@@ -34,11 +34,14 @@ class Calc(commands.Cog):
         buffs_as_modifiers = database.translate_buffs(buffs)
         buffs_as_modifiers.append(database.Buff(float(-resist), True))
         no_crit, crit = database.calc_damage(base, damage, pierce, critical, buffs_as_modifiers, block, pvp)
+        curved_damage = round((database.pve_damage_curve(damage) * 100) - 100, 2)
+        curved_str = f" ({curved_damage}% {database.DAMAGE})"
+        show_curved = int(float(damage) != curved_damage)
         embed = (
             discord.Embed(
                 title=f"Damage Calculator",
                 color=discord.Color.dark_blue(),
-                description=f"{base}{database.DAMAGE} Base\n\nStats:\n{damage}% {database.DAMAGE}\n{pierce}% {database.PIERCE}\n{critical} {database.CRIT}\n{resist}% {database.RESIST}\n{block} {database.BLOCK}\n\nBuffs: {buffs}"
+                description=f"{base}{database.DAMAGE} Base\n\nStats:\n{damage}% {database.DAMAGE}{curved_str*show_curved}\n{pierce}% {database.PIERCE}\n{critical} {database.CRIT}\n{resist}% {database.RESIST}\n{block} {database.BLOCK}\n\nBuffs: {buffs}"
             )
             .add_field(name="No Crit Damage", value=f"{no_crit:,}{database.DAMAGE}")
             .add_field(name="Crit Damage", value=f"{crit:,}{database.DAMAGE}")
