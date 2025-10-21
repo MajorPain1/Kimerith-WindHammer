@@ -208,7 +208,7 @@ class StatCaps(commands.GroupCog, name="statcaps"):
         else:
             logger.info("{} requested stat caps for '{}' '{}' in channel #{} of {}", interaction.user.name, level, school, interaction.channel.name, interaction.guild.name)
         
-        if level >= 10 and level <= 170:
+        if level >= 10 and level <= 180:
             rows = await self.fetch_stat_cap(level=level, school=(_SCHOOLS_STR.index(school)+2))
         
             view = ItemView([await self.build_stat_cap_embed(row) for row in rows])
