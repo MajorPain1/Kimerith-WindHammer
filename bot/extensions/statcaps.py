@@ -214,7 +214,7 @@ class StatCaps(commands.GroupCog, name="statcaps"):
             view = ItemView([await self.build_stat_cap_embed(row) for row in rows])
             await view.start(interaction)
         else:
-            embed = discord.Embed(description="Level Range must be between 10 to 170").set_author(name=f"Unknown Stat Cap", icon_url=emojis.UNIVERSAL.url)
+            embed = discord.Embed(description="Level Range must be between 10 to 180").set_author(name=f"Unknown Stat Cap", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
 
 
