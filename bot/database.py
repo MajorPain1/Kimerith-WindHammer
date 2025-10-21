@@ -913,7 +913,7 @@ def pve_damage_curve(damage: int):
     return 1 + float_dmg
 
 def calc_damage(base, damage: int, pierce: int, critical: int, buffs: List[Buff], mob_block: int, pvp: bool):
-    ret = int(base * damage)
+    ret = int(base * (1+(float(damage) / 100)))
     
     if buffs != []:
         for buff in buffs:
