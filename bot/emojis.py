@@ -149,3 +149,7 @@ BENEFICIAL = PartialEmoji.from_str("<:B_:1110956268434247780>") # DONE
 SIGIL = PartialEmoji.from_str("<:S_:1110957279940984872>") # DONE
 TELEPORTATION = PartialEmoji.from_str("<:T_:1110957278540070983>") # DONE
 RITUAL = PartialEmoji.from_str("<:R_:1110956267134013543>") # DONE
+
+SHADOW_SELF = PartialEmoji.from_str("<:SF:1429994134713925672>")
+SHADOW_CREATURE = PartialEmoji.from_str("<:SC:1429994132117393591>")
+SHADOW_MINION = PartialEmoji.from_str("<:SM:1429994133358907513>")

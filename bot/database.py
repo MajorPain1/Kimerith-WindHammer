@@ -800,7 +800,8 @@ _TYPE_EMOJIS = {
     "Chromatic_Caster_image": CHROMATIC_CASTER,
     "Chromatic_Target_image": CHROMATIC_TARGET,
     "Shield_image": SHIELD,
-    "Weakness_image": WEAKNESS
+    "Weakness_image": WEAKNESS,
+    "ShadowPact": SHADOW_SELF,
 }
 
 def translate_type_emoji(icon_name: str) -> PartialEmoji:

@@ -954,14 +954,11 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         description = description.replace(f'${actual}$', f"{effects[index][1]}")
 
-                case "Gambit" | "Clear" | "Remove" | "Steal" | "Swap" | "Take" | "Echo" | "Detonate" | "or" | ":" | "/" | "if" | "Push":
-                    description = description = description.replace(f'${actual}$', f"{actual}")
-
                 case _:
                     description = description.replace(f'${actual}$', f"{database.translate_type_emoji(markdown_variable)}")
 
 
-        return description.replace("\\n", "\n").replace("\\r", "\r")
+        return description.replace("\\n", "\n").replace("\\r", "\r").replace('$', '')
         
     async def build_spell_embed(self, row, show_spell_effects=False):
         spell_id = row[1]
