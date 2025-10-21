@@ -808,7 +808,7 @@ def translate_type_emoji(icon_name: str) -> PartialEmoji:
     try:
         return _TYPE_EMOJIS[icon_name]
     except KeyError:
-        return _TYPE_EMOJIS["Random_image"]
+        return icon_name
 
 async def fetch_raw_item_stats(db, item: int) -> List[StatObject]:
     stats = []

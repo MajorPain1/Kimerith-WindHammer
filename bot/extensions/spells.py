@@ -955,7 +955,7 @@ class Spells(commands.GroupCog, name="spell"):
                         description = description.replace(f'${actual}$', f"{effects[index][1]}")
 
                 case _:
-                    pass
+                    description = description.replace(f'${actual}$', f"{database.translate_type_emoji(markdown_variable)}")
 
 
         return description.replace("\\n", "\n").replace("\\r", "\r").replace('$', '')
