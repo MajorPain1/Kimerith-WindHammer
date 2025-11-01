@@ -1082,6 +1082,7 @@ class SpellEffects(Enum):
     remove_converted_over_time = 148
     modify_over_time_duration = 149
     modify_school_pips = 150
+    shadow_pact = 151
 
 
 class EffectTarget(Enum):
@@ -1103,7 +1104,6 @@ class EffectTarget(Enum):
     multi_target_enemy = 14
     multi_target_friendly = 15
     friendly_single_not_me = 16
-
 
 def _make_placeholders(count: int) -> str:
     return ", ".join(["?"] * count)

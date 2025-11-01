@@ -119,10 +119,10 @@ class Spells(commands.GroupCog, name="spell"):
         res = sorted(res, key=lambda effect: effect[0])
         return [(tup[1],) + (database.translate_school(tup[2]),) + (tup[3],) for tup in res]
 
-    async def fetch_real_spell_effects(self, spell: int):
+    async def fetch_real_spell_effects(self, spell: int, num_targets=1):
         res = []
         async with self.bot.db.execute(
-            "SELECT * FROM spell_effects WHERE spell_id == ?", (spell,)
+            "SELECT * FROM spell_effects WHERE spell_id == ? AND (num_targets == ? OR num_targets == 0)", (spell,num_targets,)
         ) as cursor:
             async for row in cursor:
                 res.append(row)
@@ -242,7 +242,7 @@ class Spells(commands.GroupCog, name="spell"):
         protected = bool(effect[12])
         rank = effect[13]
         school = database.translate_school(effect[14])
-        condition = effect[15]
+        condition = effect[16]
         
         new_line: str = ""
         
@@ -781,6 +781,21 @@ class Spells(commands.GroupCog, name="spell"):
                 new_line += f"Untargetable"
             case database.SpellEffects.vanish:
                 new_line += f"Vanish"
+            case database.SpellEffects.shadow_pact:
+                match param:
+                    case 0:
+                        new_line += f"{emojis.WARD}"
+                    case 1:
+                        new_line += f"{emojis.JINX}"
+                    case 2:
+                        new_line += f"{emojis.CHARM}"
+                    case 3:
+                        new_line += f"{emojis.CURSE}"
+                    case 4:
+                        new_line += f"{emojis.DOT}"
+                    case 5:
+                        new_line += f"{emojis.HOT}"
+                new_line += f"{emojis.SHADOW_CREATURE}"
 
         no_round_list = [
             database.SpellEffects.max_health_damage, 
@@ -864,7 +879,7 @@ class Spells(commands.GroupCog, name="spell"):
             effect_type = database.SpellEffects(effect[8])
             condition = effect[15]
 
-            if effect_type != database.SpellEffects.invalid_spell_effect and effect_type != database.SpellEffects.shadow_self and effect_type != database.SpellEffects.convert_hanging_effect:
+            if (effect_class == 7) or (effect_type != database.SpellEffects.invalid_spell_effect and effect_type != database.SpellEffects.shadow_self and effect_type != database.SpellEffects.convert_hanging_effect):
                 new_line = await self.get_string_from_effect(effect, parent_is_x_pip=parent_is_x_pip, parent_is_convert=parent_is_convert)
                 effect_string.append(f"{new_line}\n")
             
@@ -872,7 +887,7 @@ class Spells(commands.GroupCog, name="spell"):
                 case 0:
                     await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level+1, parent_id=effect_id)
                 
-                case 3 | 5:
+                case 3 | 5 | 7:
                     await self.recursive_generate_effect_string(spell_effects, effect_string, nested_level, parent_id=effect_id)
                 
                 case 1:
@@ -960,7 +975,7 @@ class Spells(commands.GroupCog, name="spell"):
 
         return description.replace("\\n", "\n").replace("\\r", "\r").replace('$', '')
         
-    async def build_spell_embed(self, row, show_spell_effects=False):
+    async def build_spell_embed(self, row, show_spell_effects=False, num_targets=1):
         spell_id = row[1]
         real_name = row[3].decode("utf-8")
         image_file = row[4]
@@ -996,8 +1011,8 @@ class Spells(commands.GroupCog, name="spell"):
 
         parsed_description = ""
         if show_spell_effects:
-            spell_effects = await self.fetch_real_spell_effects(spell_id)
-            parsed_description = self.condense_conditionals(await self.generate_spell_effects_description(spell_effects)).replace(" Caster", "").replace(" Target", "").replace("\n\n\n", "\n\n")
+            spell_effects = await self.fetch_real_spell_effects(spell_id, num_targets=num_targets)
+            parsed_description = self.condense_conditionals(await self.generate_spell_effects_description(spell_effects)).replace("Caster", f"{emojis.SELF}").replace(" Target", "").replace("\n\n\n", "\n\n")
             parsed_description = self.replace_consecutive_duplicates(parsed_description)
             
             #print(parsed_description)
@@ -1088,7 +1103,8 @@ class Spells(commands.GroupCog, name="spell"):
         kind: Optional[Literal["Any","Healing","Damage","Charm","Ward","Aura","Global","AOE","Steal","Manipulation","Enchantment","Polymorph","Curse","Jinx","Mutate","Cloak"]] = "Any",
         rank: Optional[int] = -1,
         use_object_name: Optional[bool] = False,
-        show_spell_effects: Optional[bool] = False
+        show_spell_effects: Optional[bool] = False,
+        num_targets: Optional[int] = 1
     ):
         await interaction.response.defer()
         if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
@@ -1116,7 +1132,7 @@ class Spells(commands.GroupCog, name="spell"):
                     logger.info("Failed to find '{}' instead searching for {}", name, closest_rows[0][-1])
 
         if rows:
-            embeds = [await self.build_spell_embed(row, show_spell_effects=show_spell_effects) for row in rows]
+            embeds = [await self.build_spell_embed(row, show_spell_effects=show_spell_effects, num_targets=num_targets) for row in rows]
             sorted_embeds = sorted(embeds, key=lambda embed: embed[0].author.name)
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
