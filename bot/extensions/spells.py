@@ -877,7 +877,7 @@ class Spells(commands.GroupCog, name="spell"):
             effect_id = effect[0]
             effect_class = effect[4]
             effect_type = database.SpellEffects(effect[8])
-            condition = effect[15]
+            condition = effect[16]
 
             if (effect_class == 7) or (effect_type != database.SpellEffects.invalid_spell_effect and effect_type != database.SpellEffects.shadow_self and effect_type != database.SpellEffects.convert_hanging_effect):
                 new_line = await self.get_string_from_effect(effect, parent_is_x_pip=parent_is_x_pip, parent_is_convert=parent_is_convert)
@@ -1012,7 +1012,7 @@ class Spells(commands.GroupCog, name="spell"):
         parsed_description = ""
         if show_spell_effects:
             spell_effects = await self.fetch_real_spell_effects(spell_id, num_targets=num_targets)
-            parsed_description = self.condense_conditionals(await self.generate_spell_effects_description(spell_effects)).replace("Caster", f"{emojis.SELF}").replace(" Target", "").replace("\n\n\n", "\n\n")
+            parsed_description = self.condense_conditionals(await self.generate_spell_effects_description(spell_effects)).replace(" Caster", f"{emojis.SELF}").replace(" Target", "").replace("\n\n\n", "\n\n")
             parsed_description = self.replace_consecutive_duplicates(parsed_description)
             
             #print(parsed_description)
