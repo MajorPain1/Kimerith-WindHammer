@@ -802,6 +802,13 @@ _TYPE_EMOJIS = {
     "Shield_image": SHIELD,
     "Weakness_image": WEAKNESS,
     "ShadowPact": SHADOW_SELF,
+    "FirePips_image": FIRE_PIP,
+    "IcePips_image": ICE_PIP,
+    "StormPips_image": STORM_PIP,
+    "MythPips_image": MYTH_PIP,
+    "LifePips_image": LIFE_PIP,
+    "DeathPips_image": DEATH_PIP,
+    "BalancePips_image": BALANCE_PIP,
 }
 
 def translate_type_emoji(icon_name: str) -> PartialEmoji:

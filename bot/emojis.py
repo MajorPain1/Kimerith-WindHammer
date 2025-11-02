@@ -153,3 +153,11 @@ RITUAL = PartialEmoji.from_str("<:R_:1110956267134013543>") # DONE
 SHADOW_SELF = PartialEmoji.from_str("<:SF:1429994134713925672>")
 SHADOW_CREATURE = PartialEmoji.from_str("<:SC:1429994132117393591>")
 SHADOW_MINION = PartialEmoji.from_str("<:SM:1429994133358907513>")
+
+FIRE_PIP = PartialEmoji.from_str("<:PF:1434355875132211210>")
+ICE_PIP = PartialEmoji.from_str("<:PI:1434355880723222569>")
+STORM_PIP = PartialEmoji.from_str("<:PS:1434355876491300964>")
+DEATH_PIP = PartialEmoji.from_str("<:PD:1434355881641771149>")
+LIFE_PIP = PartialEmoji.from_str("<:PL:1434355879825637456>")
+MYTH_PIP = PartialEmoji.from_str("<:PM:1434355878642847774>")
+BALANCE_PIP = PartialEmoji.from_str("<:PB:1434355882409459712>")
