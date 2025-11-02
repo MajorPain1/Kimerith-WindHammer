@@ -548,6 +548,23 @@ class Spells(commands.GroupCog, name="spell"):
                     else:
                         new_line += f"{param}% {school}{emojis.DAMAGE}"
             
+            case database.SpellEffects.modify_outgoing_steal_health:
+                if rounds == 0 and target != database.EffectTarget.target_global:
+                    if param >= 0:
+                        new_line += f"+{param}% {school}{emojis.STEAL}{emojis.BLADE}"
+                    else:
+                        new_line += f"{param}% {school}{emojis.STEAL}{emojis.WEAKNESS}"
+                elif target != database.EffectTarget.target_global:
+                    if param >= 0:
+                        new_line += f"+{param}% {school}{emojis.STEAL}{emojis.AURA}"
+                    else:
+                        new_line += f"{param}% {school}{emojis.STEAL}{emojis.AURA_NEGATIVE}"
+                else:
+                    if param >= 0:
+                        new_line += f"+{param}% {school}{emojis.STEAL}"
+                    else:
+                        new_line += f"{param}% {school}{emojis.STEAL}"
+            
             case database.SpellEffects.modify_outgoing_damage_flat:
                 if rounds == 0 and target != database.EffectTarget.target_global:
                     if param >= 0:
@@ -639,10 +656,27 @@ class Spells(commands.GroupCog, name="spell"):
                     new_line += f"{param} {school} Rank"
             
             case database.SpellEffects.modify_school_pips:
+                school_pip_emoji = None
+                match school:
+                    case emojis.FIRE:
+                        school_pip_emoji = emojis.FIRE_PIP
+                    case emojis.ICE:
+                        school_pip_emoji = emojis.ICE_PIP
+                    case emojis.STORM:
+                        school_pip_emoji = emojis.STORM_PIP
+                    case emojis.MYTH:
+                        school_pip_emoji = emojis.MYTH_PIP
+                    case emojis.LIFE:
+                        school_pip_emoji = emojis.LIFE_PIP
+                    case emojis.DEATH:
+                        school_pip_emoji = emojis.DEATH_PIP
+                    case emojis.BALANCE:
+                        school_pip_emoji = emojis.BALANCE_PIP
+                        
                 if param >= 0:
-                    new_line += f"+{param} {school}{emojis.POWER_PIP}"
+                    new_line += f"+{param} {school_pip_emoji}"
                 else:
-                    new_line += f"{param} {school}{emojis.POWER_PIP}"
+                    new_line += f"{param} {school_pip_emoji}"
             
             case database.SpellEffects.modify_shadow_creature_level:
                 if param >= 0:
@@ -796,6 +830,8 @@ class Spells(commands.GroupCog, name="spell"):
                     case 5:
                         new_line += f"{emojis.HOT}"
                 new_line += f"{emojis.SHADOW_SELF}"
+            
+            
 
         no_round_list = [
             database.SpellEffects.max_health_damage, 
