@@ -1048,13 +1048,15 @@ class Spells(commands.GroupCog, name="spell"):
         parsed_description = ""
         if show_spell_effects:
             spell_effects = await self.fetch_real_spell_effects(spell_id, num_targets=num_targets)
-            parsed_description = (await self.generate_spell_effects_description(spell_effects)).replace(" Caster", f"{emojis.SELF}").replace(" Target", "").replace("\n\n\n", "\n\n")
+            parsed_description = (await self.generate_spell_effects_description(spell_effects))
+            parsed_description = self.replace_consecutive_duplicates(parsed_description)
             if len(parsed_description) > 4000:
                 parsed_description = self.condense_conditionals(parsed_description)
-            parsed_description = self.replace_consecutive_duplicates(parsed_description)
             
-            #print(parsed_description)
-            #print(len(parsed_description))
+            parsed_description = parsed_description.replace(" Caster", f" {emojis.SELF}").replace(" Target", "").replace("\n\n\n", "\n\n")
+            
+            
+
         else:
             effects = await self.fetch_spell_effects(spell_id)
 
