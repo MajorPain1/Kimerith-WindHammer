@@ -809,6 +809,8 @@ _TYPE_EMOJIS = {
     "LifePips_image": LIFE_PIP,
     "DeathPips_image": DEATH_PIP,
     "BalancePips_image": BALANCE_PIP,
+    "WeavingChromatic_Target_image": WEAVING_TARGET,
+    "WeavingChromatic_Caster_image": WEAVING_CASTER
 }
 
 def translate_type_emoji(icon_name: str) -> PartialEmoji:
