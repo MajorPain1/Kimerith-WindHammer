@@ -144,8 +144,11 @@ class Spells(commands.GroupCog, name="spell"):
                     r"(?: and not Caster School (?!\1|\2|\3)(Death|Fire|Ice|Life|Myth|Storm))" \
                     r"(?: and not Caster School (?!\1|\2|\3|\4)(Death|Fire|Ice|Life|Myth|Storm))" \
                     r"(?: and not Caster School (?!\1|\2|\3|\4|\5)(Death|Fire|Ice|Life|Myth|Storm))"
-        string = re.sub(caster_full_pattern, f"{emojis.BALANCE}", string)
+        string = re.sub(caster_full_pattern, f"{emojis.SELF}{emojis.BALANCE}", string)
+        string = string.replace(" Caster Secondary", f" {emojis.WEAVING_CASTER}")
+        string = string.replace(" Target Secondary", f" {emojis.WEAVING_TARGET}")
         string = string.replace(" School Fire", f" {emojis.FIRE}").replace(" School Storm", f" {emojis.STORM}").replace(" School Ice", f" {emojis.ICE}").replace(" School Myth", f" {emojis.MYTH}").replace(" School Life", f" {emojis.LIFE}").replace(" School Death", f" {emojis.DEATH}").replace(" School Balance", f" {emojis.BALANCE}")
+        string = string.replace(" School", "")
         string = string.replace(" Shield", f" {emojis.WARD}").replace(" Weakness", f" {emojis.CURSE}").replace(" DOT", f" {emojis.DOT}").replace(" HOT", f" {emojis.HOT}").replace(" Negative Aura", f" {emojis.AURA_NEGATIVE}").replace(" Aura", f" {emojis.AURA}")
         
         if not use_blade_trap:
@@ -1004,6 +1007,9 @@ class Spells(commands.GroupCog, name="spell"):
                         description = description.replace(f'${actual}$', f"")
                     else:
                         description = description.replace(f'${actual}$', f"{effects[index][1]}")
+                
+                case ":":
+                    description = description.replace(f'$:$', f"->")
 
                 case _:
                     description = description.replace(f'${actual}$', f"{database.translate_type_emoji(markdown_variable)}")

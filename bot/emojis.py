@@ -17,6 +17,8 @@ FISHING = PartialEmoji.from_str("<:F_:1110954210557694154>") # DONE
 CANTRIPS = PartialEmoji.from_str("<:C_:1099490127983673434>") # DONE
 CASTLEMAGIC = PartialEmoji.from_str("<:CM:1110953210694353028>") # DONE
 WHIRLYBURLY = PartialEmoji.from_str("<:U_:1099498462711648416>") # DONE
+WEAVING_CASTER = PartialEmoji.from_str("<:WC:1435134801270280192>")
+WEAVING_TARGET = PartialEmoji.from_str("<:WT:1435136856885825606>")
 
 HEART = PartialEmoji.from_str("<:H_:1099490441268834365>") # DONE
 HEALTH = PartialEmoji.from_str("<:H_:1099490340685226166>") # DONE
