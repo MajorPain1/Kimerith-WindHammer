@@ -188,7 +188,8 @@ class Stats(commands.GroupCog, name="item"):
         item_name = row[19]
 
         requirements = []
-        requirements.append(database.translate_equip_school(school))
+        if school != 0:
+            requirements.append(database.translate_equip_school(school))
         if secondary_school != 0:
             requirements.append(database.translate_equip_school(secondary_school, secondary=True))
         if equip_level != 0:
