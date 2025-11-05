@@ -64,6 +64,7 @@ SOCKET_TEAR = PartialEmoji.from_str("<:T_:1099505202173837372>") # Done
 SOCKET_CIRCLE = PartialEmoji.from_str("<:C_:1099498888047644703>") # Done
 SOCKET_SQUARE = PartialEmoji.from_str("<:S_:1099505313616502856>") # Done
 SOCKET_TRIANGLE = PartialEmoji.from_str("<:T_:1099505231055818823>") # Done
+SOCKET_STAR =  PartialEmoji.from_str("<:JP:1435739641402753106>")
 
 PIN_POWER = PartialEmoji.from_str("<:P_:1099490465117642823>") # DONE
 PIN_SHIELD = PartialEmoji.from_str("<:P_:1099504900452405268>") # Done

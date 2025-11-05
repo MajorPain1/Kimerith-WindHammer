@@ -235,22 +235,29 @@ class ItemKind(IntFlag):
 
 
 class ExtraFlags(IntFlag):
-    PET_JEWEL = 1 << 0
-    NO_AUCTION = 1 << 1
-    CROWNS_ONLY = 1 << 2
-    NO_GIFT = 1 << 3
-    INSTANT_EFFECT = 1 << 4
-    NO_COMBAT = 1 << 5
-    NO_DROPS = 1 << 6
-    NO_DYE = 1 << 7
-    NO_HATCHMAKING = 1 << 8
-    NO_PVP = 1 << 9
-    NO_SELL = 1 << 10
-    NO_SHATTER = 1 << 11
-    NO_TRADE = 1 << 12
-    PVP_ONLY = 1 << 13
-    ARENA_POINTS_ONLY = 1 << 14
-    BLUE_ARENA_POINTS_ONLY = 1 << 15
+    SQUARE_JEWEL = 1 << 0
+    CIRCLE_JEWEL = 1 << 1
+    PET_JEWEL = 1 << 2
+    TRIANGLE_JEWEL = 1 << 3
+    TEAR_JEWEL = 1 << 4
+    PIN_SQUARE_SHIELD = 1 << 5
+    PIN_SQUARE_SWORD = 1 << 6
+    PIN_SQUARE_PIP = 1 << 7
+    NO_AUCTION = 1 << 8
+    CROWNS_ONLY = 1 << 9
+    NO_GIFT = 1 << 10
+    INSTANT_EFFECT = 1 << 11
+    NO_COMBAT = 1 << 12
+    NO_DROPS = 1 << 13
+    NO_DYE = 1 << 14
+    NO_HATCHMAKING = 1 << 15
+    NO_PVP = 1 << 16
+    NO_SELL = 1 << 17
+    NO_SHATTER = 1 << 18
+    NO_TRADE = 1 << 19
+    PVP_ONLY = 1 << 20
+    ARENA_POINTS_ONLY = 1 << 21
+    BLUE_ARENA_POINTS_ONLY = 1 << 22
 
 
 @dataclass
@@ -270,30 +277,67 @@ class StatObject:
 
 def translate_flags(flag: int) -> List[str]:
     emoji_flags = []
+    
+    if flag & ExtraFlags.SQUARE_JEWEL:
+        emoji_flags.append(f"{SOCKET_SQUARE}")
+        
+    if flag & ExtraFlags.CIRCLE_JEWEL:
+        emoji_flags.append(f"{SOCKET_CIRCLE}")
+    
+    if flag & ExtraFlags.PET_JEWEL:
+        emoji_flags.append(f"{SOCKET_STAR}")
+        
+    if flag & ExtraFlags.TRIANGLE_JEWEL:
+        emoji_flags.append(f"{SOCKET_TRIANGLE}")
+    
+    if flag & ExtraFlags.TEAR_JEWEL:
+        emoji_flags.append(f"{SOCKET_TEAR}")
+        
+    if flag & ExtraFlags.PIN_SQUARE_SHIELD:
+        emoji_flags.append(f"{PIN_SHIELD}")
+    
+    if flag & ExtraFlags.PIN_SQUARE_SWORD:
+        emoji_flags.append(f"{PIN_SWORD}")
+    
+    if flag & ExtraFlags.PIN_SQUARE_PIP:
+        emoji_flags.append(f"{PIN_POWER}")
+    
     if flag & ExtraFlags.NO_AUCTION:
         emoji_flags.append(f"{NO_AUCTION}")
+        
     if flag & ExtraFlags.CROWNS_ONLY:
         emoji_flags.append(f"{CROWNS_ONLY}")
+        
     if flag & ExtraFlags.NO_COMBAT:
         emoji_flags.append(f"{NO_COMBAT}")
+        
     if flag & ExtraFlags.NO_DROPS:
         emoji_flags.append(f"{NO_DROPS}")
+        
     if flag & ExtraFlags.NO_DYE:
         emoji_flags.append(f"{NO_DYE}")
+        
     if flag & ExtraFlags.NO_HATCHMAKING:
         emoji_flags.append(f"{NO_HATCHMAKING}")
+        
     if flag & ExtraFlags.NO_PVP:
         emoji_flags.append(f"{NO_PVP}")
+        
     if flag & ExtraFlags.NO_SELL:
         emoji_flags.append(f"{NO_SELL}")
+        
     if flag & ExtraFlags.NO_SHATTER:
         emoji_flags.append(f"{NO_SHATTER}")
+        
     if flag & ExtraFlags.NO_TRADE:
         emoji_flags.append(f"{NO_TRADE}")
+        
     if flag & ExtraFlags.PVP_ONLY:
         emoji_flags.append(f"{PVP_ONLY}")
+        
     if flag & ExtraFlags.ARENA_POINTS_ONLY:
         emoji_flags.append(f"{ARENA_POINTS_ONLY}")
+        
     if flag & ExtraFlags.BLUE_ARENA_POINTS_ONLY:
         emoji_flags.append(f"{BLUE_ARENA_POINTS_ONLY}")
 
