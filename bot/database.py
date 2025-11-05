@@ -691,8 +691,6 @@ def translate_equip_school(school: int, secondary=False) -> str:
     
     if school & (1 << 31) != 0:
         return f"All{secondary*' magic weaving'} schools except {school_emoji}"
-    elif school == 0 and not secondary:
-        return f"{school_emoji}"
     else:
         return f"{school_emoji} {school_str} Only"
 
