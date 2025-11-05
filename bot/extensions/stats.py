@@ -177,19 +177,22 @@ class Stats(commands.GroupCog, name="item"):
         kind = database.ItemKind(row[6])
         extra_flags = database.ExtraFlags(row[7])
         school = row[8]
-        equip_level = row[9]
-        min_pet_level = row[10]
-        max_spells = row[11]
-        max_copies = row[12]
-        max_school_copies = row[13]
-        deck_school = row[14]
-        max_tcs = row[15]
-        item_name = row[18]
+        secondary_school = row[9]
+        equip_level = row[10]
+        min_pet_level = row[11]
+        max_spells = row[12]
+        max_copies = row[13]
+        max_school_copies = row[14]
+        deck_school = row[15]
+        max_tcs = row[16]
+        item_name = row[19]
 
         requirements = []
+        requirements.append(database.translate_equip_school(school))
+        if secondary_school != 0:
+            requirements.append(database.translate_equip_school(secondary_school, secondary=True))
         if equip_level != 0:
             requirements.append(f"Level {equip_level}+")
-        requirements.append(database.translate_equip_school(school))
 
         stats = []
         if database.ExtraFlags.PET_JEWEL in extra_flags:

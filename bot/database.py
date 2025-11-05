@@ -639,14 +639,18 @@ def translate_school(school: int) -> discord.PartialEmoji:
     return _SCHOOLS[school]
 
 
-def translate_equip_school(school: int) -> str:
+def translate_equip_school(school: int, secondary=False) -> str:
     school_emoji = _SCHOOLS[school & 0x7FFF_FFFF]
+    school_str = "School"
+    if secondary:
+        school_str = "Magic Weaving"
+    
     if school & (1 << 31) != 0:
-        return f"All schools except {school_emoji}"
-    elif school == 0:
+        return f"All{secondary*' magic weaving'} schools except {school_emoji}"
+    elif school == 0 and not secondary:
         return f"{school_emoji}"
     else:
-        return f"{school_emoji} only"
+        return f"{school_emoji} {school_str} Only"
 
 
 def make_school_color(school: int) -> discord.Color:
