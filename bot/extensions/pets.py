@@ -141,7 +141,10 @@ class Pets(commands.GroupCog, name="pet"):
 
             object_name = card.decode()
 
-            card_names.append(f"{card_name[0]} ({object_name})")
+            if card_name:
+                card_names.append(f"{card_name[0]} ({object_name})")
+            else:
+                card_names.append(f"Card doesn't exist ({object_name})")
 
         return card_names
     
