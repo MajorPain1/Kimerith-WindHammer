@@ -34,6 +34,12 @@ INNER JOIN locale_en ON locale_en.id == fish.name
 WHERE fish.real_name == ? COLLATE NOCASE
 """
 
+FIND_ID_QUERY = """
+SELECT * FROM fish
+INNER JOIN locale_en ON locale_en.id == fish.name
+WHERE fish.id == ?
+"""
+
 def remove_indices(lst, indices):
     return [value for index, value in enumerate(lst) if index not in indices]
 
@@ -48,6 +54,10 @@ class Fish(commands.GroupCog, name="fish"):
     async def fetch_object_name(self, name: str) -> List[tuple]:
         name_bytes = name.encode('utf-8')
         async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
+            return await cursor.fetchall()
+    
+    async def fetch_id(self, id: int) -> List[tuple]:
+        async with self.bot.db.execute(FIND_ID_QUERY, (id,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_fish_with_filter(self, fish: List[str], school: Optional[str] = "Any", rank: Optional[int] = -1, is_sentinel: Optional[bool] = None, return_row=False):
@@ -118,7 +128,7 @@ class Fish(commands.GroupCog, name="fish"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance"]] = "Any",
         rank: Optional[int] = -1,
         is_sentinel: Optional[bool] = None,
-        use_object_name: Optional[bool] = False
+        search_by: Optional[Literal["Name", "Object", "ID"]] = "Name",
     ):
         await interaction.response.defer()
         if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
@@ -126,10 +136,16 @@ class Fish(commands.GroupCog, name="fish"):
         else:
             logger.info("{} requested fish '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
-        if use_object_name:
+        if search_by == "Object":
             rows = await self.fetch_object_name(name)
             if not rows:
                 embed = discord.Embed(description=f"No fish with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+        
+        elif search_by == "ID":
+            rows = await self.fetch_id(name)
+            if not rows:
+                embed = discord.Embed(description=f"No fish with ID {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
                 await interaction.followup.send(embed=embed)
                 
         else:
@@ -147,7 +163,7 @@ class Fish(commands.GroupCog, name="fish"):
         if rows:
             view = ItemView([await self.build_fish_embed(row) for row in rows])
             await view.start(interaction)
-        elif not use_object_name:
+        elif search_by == "Name":
             logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No fish with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
@@ -161,6 +177,7 @@ class Fish(commands.GroupCog, name="fish"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance"]] = "Any",
         rank: Optional[int] = -1,
         is_sentinel: Optional[bool] = None,
+        use_object_name: Optional[bool] = False,
     ):
         await interaction.response.defer()
         if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
@@ -169,14 +186,23 @@ class Fish(commands.GroupCog, name="fish"):
             logger.info("{} searched for fish that contain '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
         fish_containing_name = []
-        for fish in self.bot.fish_list:
-            fish: str
+        
+        if use_object_name:
+            for fish in self.bot.fish_object_list:
+                fish: str
 
-            if name == '*' or name.lower() in fish.lower():
-                fish_containing_name.append(fish)
+                if name == '*' or name.lower() in fish.lower():
+                    fish_containing_name.append(fish)
+                    
+        else:
+            for fish in self.bot.fish_list:
+                fish: str
+
+                if name == '*' or name.lower() in fish.lower():
+                    fish_containing_name.append(fish)
 
         no_duplicate_fish = [*set(fish_containing_name)]
-        filtered_fish = await self.fetch_fish_with_filter(fish=no_duplicate_fish, school=school, rank=rank, is_sentinel=is_sentinel)
+        filtered_fish = await self.fetch_fish_with_filter(fish=no_duplicate_fish, school=school, rank=rank, is_sentinel=is_sentinel, object_name=use_object_name)
         no_no_duplicate_fish = [*set(filtered_fish)]
         alphabetic_fish = sorted(no_no_duplicate_fish)
 

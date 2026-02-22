@@ -51,6 +51,12 @@ AND (? = -1 OR spells.rank = ?)
 COLLATE NOCASE
 """
 
+FIND_ID_QUERY = """
+SELECT * FROM spells
+INNER JOIN locale_en ON locale_en.id == spells.name
+WHERE spells.template_id == ?
+"""
+
 def remove_indices(lst, indices):
     return [value for index, value in enumerate(lst) if index not in indices]
 
@@ -73,6 +79,10 @@ class Spells(commands.GroupCog, name="spell"):
     
     async def fetch_mob_object_name_from_id(self, id: int) -> List[tuple]:
         async with self.bot.db.execute(FIND_MOB_OBJECT_NAME_FROM_ID, (id,)) as cursor:
+            return await cursor.fetchall()
+    
+    async def fetch_id(self, id: int) -> List[tuple]:
+        async with self.bot.db.execute(FIND_ID_QUERY, (id,)) as cursor:
             return await cursor.fetchall()
         
     async def fetch_spells_with_filter(self, spells: List[str], school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
@@ -1148,7 +1158,7 @@ class Spells(commands.GroupCog, name="spell"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Gardening", "Shadow", "Fishing", "Cantrips", "Castlemagic", "WhirlyBurly"]] = "Any",
         kind: Optional[Literal["Any","Healing","Damage","Charm","Ward","Aura","Global","AOE","Steal","Manipulation","Enchantment","Polymorph","Curse","Jinx","Mutate","Cloak"]] = "Any",
         rank: Optional[int] = -1,
-        use_object_name: Optional[bool] = False,
+        search_by: Optional[Literal["Name", "Object", "ID"]] = "Name",
         show_spell_effects: Optional[bool] = False,
         num_targets: Optional[int] = 1
     ):
@@ -1158,10 +1168,16 @@ class Spells(commands.GroupCog, name="spell"):
         else:
             logger.info("{} requested spell '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
-        if use_object_name:
+        if search_by == "Object":
             rows = await self.fetch_object_name(name)
             if not rows:
                 embed = discord.Embed(description=f"No spells with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+        
+        elif search_by == "ID":
+            rows = await self.fetch_id(name)
+            if not rows:
+                embed = discord.Embed(description=f"No spells with ID {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
                 await interaction.followup.send(embed=embed)
                 
         else:
@@ -1183,7 +1199,7 @@ class Spells(commands.GroupCog, name="spell"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
-        elif not use_object_name:
+        elif search_by == "Name":
             logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No spells with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)

@@ -30,11 +30,16 @@ AND (? = -1 OR mobs.rank = ?)
 COLLATE NOCASE
 """
 
-
 FIND_OBJECT_NAME_QUERY = """
 SELECT * FROM mobs
 INNER JOIN locale_en ON locale_en.id == mobs.name
 WHERE mobs.real_name == ? COLLATE NOCASE
+"""
+
+FIND_ID_QUERY = """
+SELECT * FROM mobs
+INNER JOIN locale_en ON locale_en.id == mobs.name
+WHERE mobs.id == ?
 """
 
 class Mobs(commands.GroupCog, name="mob"):
@@ -48,6 +53,10 @@ class Mobs(commands.GroupCog, name="mob"):
     async def fetch_object_name(self, name: str) -> List[tuple]:
         name_bytes = name.encode('utf-8')
         async with self.bot.db.execute(FIND_OBJECT_NAME_QUERY, (name_bytes,)) as cursor:
+            return await cursor.fetchall()
+    
+    async def fetch_id(self, id: int) -> List[tuple]:
+        async with self.bot.db.execute(FIND_ID_QUERY, (id,)) as cursor:
             return await cursor.fetchall()
 
     async def fetch_mobs_with_filter(self, mobs, school: Optional[str] = "Any", kind: Optional[str] = "Any", rank: Optional[int] = -1, return_row=False):
@@ -356,7 +365,7 @@ class Mobs(commands.GroupCog, name="mob"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Shadow"]] = "Any",
         kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
         rank: Optional[int] = -1,
-        use_object_name: Optional[bool] = False,
+        search_by: Optional[Literal["Name", "Object", "ID"]] = "Name",
     ):
         await interaction.response.defer()
         if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
@@ -364,11 +373,19 @@ class Mobs(commands.GroupCog, name="mob"):
         else:
             logger.info("{} requested mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
-        if use_object_name:
+
+        if search_by == "Object":
             rows = await self.fetch_object_name(name)
             if not rows:
                 embed = discord.Embed(description=f"No mobs with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
                 await interaction.followup.send(embed=embed)
+                
+        elif search_by == "ID":
+            rows = await self.fetch_id(name)
+            if not rows:
+                embed = discord.Embed(description=f"No mobs with id {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+                
         else:
             rows = await self.fetch_mobs_with_filter(name, school, kind, rank, return_row=True)
             if not rows:
@@ -387,7 +404,7 @@ class Mobs(commands.GroupCog, name="mob"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
-        elif not use_object_name:
+        elif search_by == "Name":
             logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No mobs with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
@@ -401,7 +418,7 @@ class Mobs(commands.GroupCog, name="mob"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance", "Star", "Sun", "Moon", "Shadow"]] = "Any",
         kind: Optional[Literal["Any", "Easy", "Normal", "Elite", "Boss"]] = "Any",
         rank: Optional[int] = -1,
-        use_object_name: Optional[bool] = False,
+        search_by: Optional[Literal["Name", "Object", "ID"]] = "Name",
     ):
         await interaction.response.defer()
         if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
@@ -409,11 +426,18 @@ class Mobs(commands.GroupCog, name="mob"):
         else:
             logger.info("{} requested mob deck '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
-        if use_object_name:
+        if search_by == "Object":
             rows = await self.fetch_object_name(name)
             if not rows:
                 embed = discord.Embed(description=f"No mobs with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
                 await interaction.followup.send(embed=embed)
+                
+        elif search_by == "ID":
+            rows = await self.fetch_id(name)
+            if not rows:
+                embed = discord.Embed(description=f"No mobs with id {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+                
         else:
             rows = await self.fetch_mobs_with_filter(name, school, kind, rank, return_row=True)
             if not rows:
@@ -432,7 +456,7 @@ class Mobs(commands.GroupCog, name="mob"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
-        elif not use_object_name:
+        elif search_by == "Name":
             logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No mobs with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
@@ -495,9 +519,9 @@ class Mobs(commands.GroupCog, name="mob"):
         damage: int,
         pierce: int,
         critical: int,
-        use_object_name: Optional[bool] = False,
         buffs: Optional[str] = "",
         pvp: Optional[bool] = True,
+        search_by: Optional[Literal["Name", "Object", "ID"]] = "Name",
     ):
         await interaction.response.defer()
         if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
@@ -505,11 +529,18 @@ class Mobs(commands.GroupCog, name="mob"):
         else:
             logger.info("{} requested calc on mob '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
-        if use_object_name:
+        if search_by == "Object":
             rows = await self.fetch_object_name(name)
             if not rows:
                 embed = discord.Embed(description=f"No mobs with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
                 await interaction.followup.send(embed=embed)
+                
+        elif search_by == "ID":
+            rows = await self.fetch_id(name)
+            if not rows:
+                embed = discord.Embed(description=f"No mobs with id {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+                
         else:
             rows = await self.fetch_mob(name)
             if not rows:
@@ -527,7 +558,7 @@ class Mobs(commands.GroupCog, name="mob"):
             unzipped_embeds, unzipped_images = list(zip(*sorted_embeds))
             view = ItemView(unzipped_embeds, files=unzipped_images)
             await view.start(interaction)
-        elif not use_object_name:
+        elif search_by == "Name":
             logger.info("Failed to find '{}'", name)
             embed = discord.Embed(description=f"No mobs with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)

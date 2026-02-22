@@ -56,6 +56,12 @@ AND (? = -1 OR items.equip_level = ?)
 COLLATE NOCASE
 """
 
+FIND_ID_QUERY = """
+SELECT * FROM items
+INNER JOIN locale_en ON locale_en.id == items.name
+WHERE items.id == ?
+"""
+
 
 class Stats(commands.GroupCog, name="item"):
     def __init__(self, bot: TheBot):
@@ -78,6 +84,9 @@ class Stats(commands.GroupCog, name="item"):
         async with self.bot.db.execute(SET_BONUS_NAME_QUERY, (set_id,)) as cursor:
             return (await cursor.fetchone())[0]
 
+    async def fetch_id(self, id: int) -> List[tuple]:
+        async with self.bot.db.execute(FIND_ID_QUERY, (id,)) as cursor:
+            return await cursor.fetchall()
 
     async def fetch_items_with_filter(self, items, school: Optional[str] = "Any", kind: Optional[str] = "Any", level: Optional[int] = -1, return_row=False):
         if isinstance(items, str):
@@ -240,7 +249,7 @@ class Stats(commands.GroupCog, name="item"):
         school: Optional[Literal["Any", "Fire", "Ice", "Storm", "Myth", "Life", "Death", "Balance"]] = "Any",
         kind: Optional[Literal["Any", "Hat", "Robe", "Shoes", "Weapon", "Athame", "Amulet", "Ring", "Deck", "Jewel", "Mount"]] = "Any",
         level: Optional[int] = -1,
-        use_object_name: Optional[bool] = False
+        search_by: Optional[Literal["Name", "Object", "ID"]] = "Name",
     ):
         await interaction.response.defer()
         if type(interaction.channel) is DMChannel or type(interaction.channel) is PartialMessageable:
@@ -248,11 +257,18 @@ class Stats(commands.GroupCog, name="item"):
         else:
             logger.info("{} requested item '{}' in channel #{} of {}", interaction.user.name, name, interaction.channel.name, interaction.guild.name)
 
-        if use_object_name:
+        if search_by == "Object":
             rows = await self.fetch_object_name(name)
             if not rows:
                 embed = discord.Embed(description=f"No items with object name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
                 await interaction.followup.send(embed=embed)
+        
+        elif search_by == "ID":
+            rows = await self.fetch_object_name(name)
+            if not rows:
+                embed = discord.Embed(description=f"No items with ID {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
+                await interaction.followup.send(embed=embed)
+        
         else:
             rows = await self.fetch_items_with_filter(items=name, school=school, kind=kind, level=level, return_row=True)
             if not rows:
@@ -268,7 +284,7 @@ class Stats(commands.GroupCog, name="item"):
         if rows:
             view = ItemView([await self.build_item_embed(row) for row in rows])
             await view.start(interaction)
-        elif not use_object_name:
+        elif search_by == "Name":
             embed = discord.Embed(description=f"No items with name {name} found.").set_author(name=f"Searching: {name}", icon_url=emojis.UNIVERSAL.url)
             await interaction.followup.send(embed=embed)
 
