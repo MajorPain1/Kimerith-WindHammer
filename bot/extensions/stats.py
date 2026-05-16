@@ -63,6 +63,8 @@ WHERE items.id == ?
 """
 
 
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 class Stats(commands.GroupCog, name="item"):
     def __init__(self, bot: TheBot):
         self.bot = bot

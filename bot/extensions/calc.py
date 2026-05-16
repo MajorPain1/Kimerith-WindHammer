@@ -12,6 +12,8 @@ class Calc(commands.Cog):
 
     @app_commands.command(name="calc", description="Simple Calculation of Damage")
     @app_commands.describe(buffs="Your buffs separated by a space (use a \"P\" prefix to denote pierce) EX: 35 35 40 20P -50P", damage="Input your pre-curved damage if you are in PvE")
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def find(
         self, 
         interaction: discord.Interaction,

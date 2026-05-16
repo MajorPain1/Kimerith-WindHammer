@@ -60,6 +60,8 @@ WHERE spells.template_id == ?
 def remove_indices(lst, indices):
     return [value for index, value in enumerate(lst) if index not in indices]
 
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 class Spells(commands.GroupCog, name="spell"):
     def __init__(self, bot: TheBot):
         self.bot = bot

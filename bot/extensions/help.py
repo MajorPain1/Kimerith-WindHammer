@@ -32,6 +32,8 @@ class Help(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="help", description="Provides a list of commands Kimerith WindHammer can do")
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     async def find(
         self, 
         interaction: discord.Interaction, 

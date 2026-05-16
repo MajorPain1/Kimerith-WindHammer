@@ -18,6 +18,8 @@ SELECT * FROM statcaps WHERE level = ? AND school = ?;
 """
 
 
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 class StatCaps(commands.GroupCog, name="statcaps"):
     def __init__(self, bot: TheBot):
         self.bot = bot
