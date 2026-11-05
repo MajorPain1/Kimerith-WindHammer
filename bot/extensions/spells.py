@@ -201,6 +201,17 @@ class Spells(commands.GroupCog, name="spell"):
         return text[:index] + "@" + text[index+1:]
     
     def condense_conditionals(self, text):
+        def normalize(section):
+            return (section
+                .replace(f"{emojis.DEATH}", "@")
+                .replace(f"{emojis.FIRE}", "@")
+                .replace(f"{emojis.ICE}", "@")
+                .replace(f"{emojis.LIFE}", "@")
+                .replace(f"{emojis.MYTH}", "@")
+                .replace(f"{emojis.STORM}", "@")
+                .lstrip("\n")
+            )
+        
         sections = text.split("\n\n")
         
         # CHROMATIC CONDENSER!
@@ -209,9 +220,7 @@ class Spells(commands.GroupCog, name="spell"):
         for section in sections:
             section: str
             
-            raw_string = section.replace(f"{emojis.DEATH}", "@").replace(f"{emojis.FIRE}", "@").replace(f"{emojis.ICE}", "@").replace(f"{emojis.LIFE}", "@").replace(f"{emojis.MYTH}", "@").replace(f"{emojis.STORM}", "@")
-
-            raw_string = raw_string.lstrip("\n")
+            raw_string = normalize(section)
             
             if raw_string in conditionals:
                 conditionals[raw_string] = conditionals[raw_string]+1
@@ -219,14 +228,15 @@ class Spells(commands.GroupCog, name="spell"):
                 conditionals[raw_string] = 1
         
         indices_to_remove = []
-        keys_seen = []
+        keys_seen = set()
         for i, section in enumerate(sections):
-            raw_string = section.replace(f"{emojis.DEATH}", "@").replace(f"{emojis.FIRE}", "@").replace(f"{emojis.ICE}", "@").replace(f"{emojis.LIFE}", "@").replace(f"{emojis.MYTH}", "@").replace(f"{emojis.STORM}", "@").lstrip("\n")
+            raw_string = normalize(section)
+
             if conditionals[raw_string] >= 6:
                 if raw_string in keys_seen:
                     indices_to_remove.append(i)
                 else:
-                    keys_seen = raw_string
+                    keys_seen.add(raw_string)
                     sections[i] = raw_string
 
         result = [value for idx, value in enumerate(sections) if idx not in indices_to_remove]
