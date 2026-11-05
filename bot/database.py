@@ -1141,7 +1141,6 @@ class SpellEffects(Enum):
     modify_over_time_duration = 150
     modify_school_pips = 151
     shadow_pact = 152
-    minion_rank_damage = 22
 
 
 class EffectTarget(Enum):
