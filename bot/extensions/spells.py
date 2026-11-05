@@ -843,9 +843,9 @@ class Spells(commands.GroupCog, name="spell"):
                     case 5:
                         new_line += f"{emojis.HOT}"
                 new_line += f"{emojis.SHADOW_SELF}"
+            case database.SpellEffects.minion_rank_damage:
+                new_line += f"Sap {emojis.MINION} {param}"
             
-            
-
         no_round_list = [
             database.SpellEffects.max_health_damage, 
             database.SpellEffects.damage_no_crit, 
@@ -883,6 +883,7 @@ class Spells(commands.GroupCog, name="spell"):
             database.SpellEffects.steal_ward,
             database.SpellEffects.steal_over_time,
             database.SpellEffects.detonate_over_time,
+            database.SpellEffects.minion_rank_damage,
         ]    
         if param == -1 and effect_type in remove_all_list:
             new_line = new_line.replace("-1", "all")
@@ -912,6 +913,15 @@ class Spells(commands.GroupCog, name="spell"):
                 new_line += f" {emojis.ALL_ENEMIES_SELECT}"
             case database.EffectTarget.multi_target_friendly:
                 new_line += f" {emojis.ALL_FRIENDS_SELECT}"
+            case database.EffectTarget.friendly_minion:
+                new_line += f" {emojis.ALL_FRIENDS_SQUARE}{emojis.MINION}"
+            case database.EffectTarget.enemy_minion:
+                new_line += f" {emojis.ALL_ENEMIES_SQUARE}{emojis.MINION}"
+            case database.EffectTarget.target_minion:
+                new_line += f" {emojis.ALL_ENEMIES}{emojis.MINION}"
+            case database.EffectTarget.caster_minion:
+                new_line += f" {emojis.ALL_FRIENDS}{emojis.MINION}"
+            
         
         if effect_type != 0:
             return new_line

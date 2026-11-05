@@ -137,6 +137,8 @@ CHROMATIC_CASTER = PartialEmoji.from_str("<:CC:1222566258705432596>") # DONE
 CHROMATIC_TARGET = PartialEmoji.from_str("<:CT:1222566223431077968>") # DONE
 SHIELD = PartialEmoji.from_str("<:S_:1222565837978730538>") # DONE
 WEAKNESS = PartialEmoji.from_str("<:W_:1222565866806186038>") # DONE
+NEGATIVE_AFTERLIFE = PartialEmoji.from_str("<:AN:1567994461336764446>") # DONE
+PACIFY = PartialEmoji.from_str("<:P_:1567994615997669477>") # DONE
 
 GROWING = PartialEmoji.from_str("<:GR:1110956271928086709>") # DONESH
 PEST = PartialEmoji.from_str("<:P_:1110956273014427778>") # DONE

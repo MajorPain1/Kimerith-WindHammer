@@ -856,7 +856,9 @@ _TYPE_EMOJIS = {
     "DeathPips_image": DEATH_PIP,
     "BalancePips_image": BALANCE_PIP,
     "WeavingChromatic_Target_image": WEAVING_TARGET,
-    "WeavingChromatic_Caster_image": WEAVING_CASTER
+    "WeavingChromatic_Caster_image": WEAVING_CASTER,
+    "Pacify_image": PACIFY,
+    "Afterlife_Neg_image": NEGATIVE_AFTERLIFE,
 }
 
 def translate_type_emoji(icon_name: str) -> PartialEmoji:
@@ -1139,6 +1141,7 @@ class SpellEffects(Enum):
     modify_over_time_duration = 150
     modify_school_pips = 151
     shadow_pact = 152
+    minion_rank_damage = 22
 
 
 class EffectTarget(Enum):
@@ -1154,6 +1157,9 @@ class EffectTarget(Enum):
     friendly_single = 9
     minion = 10
     friendly_minion = 17
+    enemy_minion = 18
+    caster_minion = 19
+    target_minion = 20
     self = 11
     at_least_one_enemy = 13
     preselected_enemy_single = 12
