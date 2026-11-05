@@ -844,7 +844,7 @@ class Spells(commands.GroupCog, name="spell"):
                         new_line += f"{emojis.HOT}"
                 new_line += f"{emojis.SHADOW_SELF}"
             case database.SpellEffects.minion_rank_damage:
-                new_line += f"Sap {emojis.MINION} {param}"
+                new_line += f"Sap {param}"
             
         no_round_list = [
             database.SpellEffects.max_health_damage, 
